@@ -1,0 +1,39 @@
+# Start with an image that already has Go installed.
+FROM golang:1.27-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+
+# Download the dependencies defined in go.mod.
+RUN go mod download
+
+COPY . .
+
+# Compile the Go application into a Linux executable called api-gateway.
+RUN CGO_ENABLED=0 GOOS=linux go build -o order-service .
+
+# Start with a small Alpine Linux image.
+FROM alpine:3.22
+
+WORKDIR /app
+
+# Install CA certificates for HTTPS/TLS connections.
+RUN apk add --no-cache ca-certificates
+
+# Create a non-root group and user for security.
+RUN addgroup -S bravogroup && \
+    adduser -S bravouser -G bravogroup
+
+COPY --from=builder /app/order-service .
+
+# Run the application as the non-root user.
+USER bravouser
+
+EXPOSE 8081
+
+# Check whether the API Gateway is responding.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q --spider http://localhost:8081/health || exit 1
+
+ENTRYPOINT [ "./order-service" ]
