@@ -24,6 +24,7 @@ COPY --from=builder /app/api-gateway .
 
 USER bravouser
 
+# The service listens this port
 EXPOSE 8081
 
 # Check whether the api-gateway is healthy.
