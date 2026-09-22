@@ -25,7 +25,7 @@ COPY --from=builder /app/api-gateway .
 USER bravouser
 
 # The service listens this port
-EXPOSE 8081
+EXPOSE 8080
 
 # Check whether the api-gateway is healthy.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
