@@ -1,0 +1,17 @@
+.git
+.gitignore
+Dockerfile
+.dockerignore
+
+*.md
+.env
+.env.*
+
+*.log
+
+tmp/
+logs/
+
+bin/
+dist/
+coverage/
