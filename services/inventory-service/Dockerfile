@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o inventory-service .
 
 # Runtime stage
-FROM alpine:3.20
+FROM alpine:3.22
 
 WORKDIR /app
 
