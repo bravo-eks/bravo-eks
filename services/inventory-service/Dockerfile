@@ -26,7 +26,7 @@ COPY --from=builder /app/inventory-service /app/inventory-service
 EXPOSE 8082
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget -q --spider http://localhost:8086/livez || exit 1
+    CMD wget -q --spider http://localhost:8082/healthz || exit 1
 
 USER appuser
 
