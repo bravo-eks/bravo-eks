@@ -26,7 +26,7 @@ COPY --from=builder /app/worker /app/worker
 EXPOSE 8090
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget -q --spider http://localhost:8090/livez || exit 1
+    CMD wget -q --spider http://localhost:8090/healthz || exit 1
 
 USER appuser
 
