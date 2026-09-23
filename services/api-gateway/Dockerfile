@@ -29,6 +29,6 @@ EXPOSE 8080
 
 # Check whether the api-gateway is healthy.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -q --spider http://localhost:8081/healthz || exit 1
+  CMD wget -q --spider http://localhost:8080/healthz || exit 1
 
 CMD ["./api-gateway"]
