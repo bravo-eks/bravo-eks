@@ -1,0 +1,8 @@
+.git
+.gitignore
+**/.DS_Store
+**/*.log
+node_modules
+Dockerfile*
+README*
+CONTRIBUTING.md
