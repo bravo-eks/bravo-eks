@@ -1,21 +1,21 @@
 output "vpc_id" {
-    description = "ID of the VPC"
-    value = aws_vpc.bravo-vpc.id
-}
-
-output "vpc_cidr_block" {
-    description = "CIDR block of the VPC"
-    value = aws_vpc.bravo-vpc.cidr_block
+  description = "ID of the VPC"
+  value       = aws_vpc.this.id
 }
 
 output "public_subnet_ids" {
-    description = "IDs of public subnets"
-    value = aws_subnet.public[*].id
+  description = "IDs of the public subnets"
+  value       = aws_subnet.public[*].id
 }
 
 output "private_subnet_ids" {
-    description = "IDs of private subnets"
-    value = aws_subnet.private[*].id
+  description = "IDs of the private EKS/application subnets"
+  value       = aws_subnet.private[*].id
+}
+
+output "database_subnet_ids" {
+  description = "IDs of the private database subnets"
+  value       = aws_subnet.database[*].id
 }
 
 output "nat_gateway_id" {
