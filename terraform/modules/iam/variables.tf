@@ -1,59 +1,83 @@
-# Order Service
+# General
 
-output "order_service_role_arn" {
-  description = "ARN of the IAM role assumed by the order-service Kubernetes ServiceAccount."
-  value       = aws_iam_role.order_service.arn
+variable "name_prefix" {
+  description = "Prefix used when naming IAM resources."
+  type        = string
+  default     = "bravo"
 }
 
-output "order_service_role_name" {
-  description = "Name of the order-service IAM role."
-  value       = aws_iam_role.order_service.name
+variable "tags" {
+  description = "Tags applied to IAM resources."
+  type        = map(string)
+  default     = {}
 }
 
-# Payment Service
+# EKS OIDC / IRSA
 
-output "payment_service_role_arn" {
-  description = "ARN of the IAM role assumed by the payment-service Kubernetes ServiceAccount."
-  value       = aws_iam_role.payment_service.arn
+variable "eks_oidc_provider_arn" {
+  description = "ARN of the IAM OIDC provider associated with the EKS cluster."
+  type        = string
+
+  validation {
+    condition = can(regex(
+      "^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:oidc-provider/",
+      var.eks_oidc_provider_arn
+    ))
+
+    error_message = "eks_oidc_provider_arn must be a valid IAM OIDC provider ARN."
+  }
 }
 
-output "payment_service_role_name" {
-  description = "Name of the payment-service IAM role."
-  value       = aws_iam_role.payment_service.name
+variable "eks_oidc_provider_url" {
+  description = "EKS OIDC issuer URL without the https:// prefix."
+  type        = string
+
+  validation {
+    condition     = !startswith(var.eks_oidc_provider_url, "https://")
+    error_message = "eks_oidc_provider_url must not include the https:// prefix."
+  }
 }
 
-# Shipping Service
+# Kubernetes
 
-output "shipping_service_role_arn" {
-  description = "ARN of the IAM role assumed by the shipping-service Kubernetes ServiceAccount."
-  value       = aws_iam_role.shipping_service.arn
+variable "kubernetes_namespace" {
+  description = "Kubernetes namespace containing the application workloads."
+  type        = string
+  default     = "default"
 }
 
-output "shipping_service_role_name" {
-  description = "Name of the shipping-service IAM role."
-  value       = aws_iam_role.shipping_service.name
+variable "order_service_account_name" {
+  description = "Kubernetes ServiceAccount used by order-service."
+  type        = string
+  default     = "order-service"
 }
 
-# Worker
-
-output "worker_role_arn" {
-  description = "ARN of the IAM role assumed by the worker Kubernetes ServiceAccount."
-  value       = aws_iam_role.worker.arn
+variable "payment_service_account_name" {
+  description = "Kubernetes ServiceAccount used by payment-service."
+  type        = string
+  default     = "payment-service"
 }
 
-output "worker_role_name" {
-  description = "Name of the worker IAM role."
-  value       = aws_iam_role.worker.name
+variable "shipping_service_account_name" {
+  description = "Kubernetes ServiceAccount used by shipping-service."
+  type        = string
+  default     = "shipping-service"
 }
 
-# Policies
-
-output "sqs_producer_policy_arn" {
-  description = "ARN of the SQS producer policy."
-  value       = aws_iam_policy.sqs_producer.arn
+variable "worker_service_account_name" {
+  description = "Kubernetes ServiceAccount used by worker."
+  type        = string
+  default     = "worker"
 }
 
-output "worker_sqs_policy_arn" {
-  description = "ARN of the worker SQS consumer policy."
-  value       = aws_iam_policy.worker_sqs.arn
+# SQS
+
+variable "sqs_queue_arns" {
+  description = "SQS queue ARNs used by application event producers and the worker consumer."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.sqs_queue_arns) > 0
+    error_message = "At least one SQS queue ARN must be supplied."
+  }
 }

@@ -1,39 +1,71 @@
-# Worker IAM Role
+# Policies
 
-output "worker_role_arn" {
-  description = "ARN of the IAM role used by the worker Kubernetes service account."
-  value       = aws_iam_role.worker.arn
+output "sqs_producer_policy_arn" {
+  description = "ARN of the SQS producer policy."
+  value       = aws_iam_policy.sqs_producer.arn
 }
-
-
-output "worker_role_name" {
-  description = "Name of the IAM role used by the worker Kubernetes service account."
-  value       = aws_iam_role.worker.name
-}
-
-# Worker SQS Policy
 
 output "worker_sqs_policy_arn" {
-  description = "ARN of the IAM policy granting the worker access to required SQS queues."
+  description = "ARN of the worker SQS consumer policy."
   value       = aws_iam_policy.worker_sqs.arn
 }
 
-# Secrets Reader IAM Role
+# Order Service
 
-output "secrets_reader_role_arn" {
-  description = "ARN of the IAM role used by the secrets-reader Kubernetes service account."
-  value       = aws_iam_role.secrets_reader.arn
+output "order_service_role_arn" {
+  description = "ARN of the IAM role assumed by the order-service Kubernetes ServiceAccount."
+  value       = aws_iam_role.order_service.arn
 }
 
-
-output "secrets_reader_role_name" {
-  description = "Name of the IAM role used by the secrets-reader Kubernetes service account."
-  value       = aws_iam_role.secrets_reader.name
+output "order_service_role_name" {
+  description = "Name of the order-service IAM role."
+  value       = aws_iam_role.order_service.name
 }
 
-# Secrets Reader Policy
+# Payment Service
 
-output "secrets_reader_policy_arn" {
-  description = "ARN of the IAM policy granting access to required Secrets Manager secrets."
-  value       = aws_iam_policy.secrets_reader.arn
+output "payment_service_role_arn" {
+  description = "ARN of the IAM role assumed by the payment-service Kubernetes ServiceAccount."
+  value       = aws_iam_role.payment_service.arn
+}
+
+output "payment_service_role_name" {
+  description = "Name of the payment-service IAM role."
+  value       = aws_iam_role.payment_service.name
+}
+
+# Shipping Service
+
+output "shipping_service_role_arn" {
+  description = "ARN of the IAM role assumed by the shipping-service Kubernetes ServiceAccount."
+  value       = aws_iam_role.shipping_service.arn
+}
+
+output "shipping_service_role_name" {
+  description = "Name of the shipping-service IAM role."
+  value       = aws_iam_role.shipping_service.name
+}
+
+# Worker
+
+output "worker_role_arn" {
+  description = "ARN of the IAM role assumed by the worker Kubernetes ServiceAccount."
+  value       = aws_iam_role.worker.arn
+}
+
+output "worker_role_name" {
+  description = "Name of the worker IAM role."
+  value       = aws_iam_role.worker.name
+}
+
+# Policies
+
+output "sqs_producer_policy_arn" {
+  description = "ARN of the SQS producer policy."
+  value       = aws_iam_policy.sqs_producer.arn
+}
+
+output "worker_sqs_policy_arn" {
+  description = "ARN of the worker SQS consumer policy."
+  value       = aws_iam_policy.worker_sqs.arn
 }
