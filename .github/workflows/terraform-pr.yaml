@@ -1,0 +1,79 @@
+name: Terraform PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "terraform/environments/prod/**"
+      - "terraform/modules/**"
+      - ".github/workflows/terraform-pr.yaml"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: eu-west-2
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+
+jobs:
+  terraform-plan:
+    name: Terraform Production Plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-plan
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive terraform/
+
+      - name: Terraform Init
+        working-directory: ./terraform/environments/prod
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./terraform/environments/prod
+        run: terraform validate
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov
+        run: checkov -d terraform --framework terraform
+
+      - name: Terraform Plan
+        working-directory: ./terraform/environments/prod
+        run: terraform plan -lock=false -out=tfplan
+
+      - name: Show Terraform Plan
+        working-directory: ./terraform/environments/prod
+        run: terraform show -no-color tfplan
+
+      - name: Add Terraform Plan to Summary
+        if: always()
+        working-directory: ./terraform/environments/prod
+        run: |
+          echo "## Terraform Production Plan" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f tfplan ]; then
+            echo "Review the proposed production infrastructure changes before merging." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```terraform' >> "$GITHUB_STEP_SUMMARY"
+            terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Terraform plan was not generated. Check the failed workflow step." >> "$GITHUB_STEP_SUMMARY"
+          fi
