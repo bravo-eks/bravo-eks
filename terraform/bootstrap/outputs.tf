@@ -19,6 +19,11 @@ output "ecr_repository_arns" {
 }
 
 output "github_actions_role_arn" {
-  description = "ARN of the IAM role used by GitHub Actions"
+  description = "ARN of the production GitHub Actions role"
   value       = aws_iam_role.github_actions.arn
+}
+
+output "github_terraform_plan_role_arn" {
+  description = "ARN of the GitHub Actions Terraform PR plan role"
+  value       = aws_iam_role.github_actions_terraform_plan.arn
 }
