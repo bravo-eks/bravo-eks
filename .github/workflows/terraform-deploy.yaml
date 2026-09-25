@@ -15,6 +15,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: terraform-production
+  cancel-in-progress: false
+
 env:
   AWS_REGION: eu-west-2
   TF_IN_AUTOMATION: true
