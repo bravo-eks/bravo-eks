@@ -1,14 +1,6 @@
 name: Terraform Production Deploy
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "terraform/environments/prod/**"
-      - "terraform/modules/**"
-      - ".github/workflows/terraform-deploy.yaml"
-
   workflow_dispatch:
 
 permissions:
@@ -64,7 +56,7 @@ jobs:
         run: |
           echo "## Terraform Production Plan" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "This is the plan that will be applied after production approval." >> "$GITHUB_STEP_SUMMARY"
+          echo "This production plan was generated from the manually triggered deployment." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo '```terraform' >> "$GITHUB_STEP_SUMMARY"
           terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"
@@ -117,5 +109,5 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "### Deployment successful" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "The approved Terraform plan was successfully applied to production." >> "$GITHUB_STEP_SUMMARY"
+          echo "The generated Terraform plan was successfully applied to production." >> "$GITHUB_STEP_SUMMARY"
             
