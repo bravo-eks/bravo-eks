@@ -29,7 +29,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
-          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-actions
+          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-deploy
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
@@ -82,7 +82,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
-          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-actions
+          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-deploy
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
