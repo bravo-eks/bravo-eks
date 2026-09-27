@@ -20,4 +20,4 @@ provider "aws" {
       Team        = "Bravo"
     }
   }
-}
+} 

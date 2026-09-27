@@ -70,3 +70,72 @@ variable "sqs_queue_name" {
   type        = string
 }
 
+
+# EKS
+variable "cluster_name" {
+  description = "Name of the EKS cluster"
+  type        = string
+}
+
+variable "cluster_version" {
+  description = "Kubernetes version for the EKS cluster"
+  type        = string
+  default     = "1.33"
+}
+
+variable "system_node_instance_types" {
+  description = "EC2 instance types for the EKS system node group"
+  type        = list(string)
+  default     = ["t3.medium"]
+}
+
+variable "system_node_desired_size" {
+  description = "Desired number of EKS system nodes"
+  type        = number
+  default     = 2
+}
+
+variable "system_node_min_size" {
+  description = "Minimum number of EKS system nodes"
+  type        = number
+  default     = 1
+}
+
+variable "system_node_max_size" {
+  description = "Maximum number of EKS system nodes"
+  type        = number
+  default     = 3
+}
+
+# IAM
+variable "kubernetes_namespace" {
+  description = "Kubernetes namespace containing application workloads"
+  type        = string
+  default     = "default"
+}
+
+variable "order_service_account_name" {
+  description = "ServiceAccount name for order-service"
+  type        = string
+  default     = "order-service"
+}
+
+variable "payment_service_account_name" {
+  description = "ServiceAccount name for payment-service"
+  type        = string
+  default     = "payment-service"
+}
+
+variable "shipping_service_account_name" {
+  description = "ServiceAccount name for shipping-service"
+  type        = string
+  default     = "shipping-service"
+}
+
+variable "worker_service_account_name" {
+  description = "ServiceAccount name for worker"
+  type        = string
+  default     = "worker"
+}
+
+
