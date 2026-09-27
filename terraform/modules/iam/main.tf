@@ -1,0 +1,294 @@
+# Order Service - IRSA Trust Policy
+
+data "aws_iam_policy_document" "order_service_assume_role" {
+  statement {
+    sid    = "AllowOrderServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.kubernetes_namespace}:${var.order_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "order_service" {
+  name               = "${var.name_prefix}-order-service"
+  description        = "IAM role assumed by the order-service Kubernetes workload using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.order_service_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-order-service"
+      Component = "order-service"
+    }
+  )
+}
+
+# Payment Service - IRSA Trust Policy
+
+data "aws_iam_policy_document" "payment_service_assume_role" {
+  statement {
+    sid    = "AllowPaymentServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.kubernetes_namespace}:${var.payment_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "payment_service" {
+  name               = "${var.name_prefix}-payment-service"
+  description        = "IAM role assumed by the payment-service Kubernetes workload using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.payment_service_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-payment-service"
+      Component = "payment-service"
+    }
+  )
+}
+
+# Shipping Service - IRSA Trust Policy
+
+data "aws_iam_policy_document" "shipping_service_assume_role" {
+  statement {
+    sid    = "AllowShippingServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.kubernetes_namespace}:${var.shipping_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "shipping_service" {
+  name               = "${var.name_prefix}-shipping-service"
+  description        = "IAM role assumed by the shipping-service Kubernetes workload using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.shipping_service_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-shipping-service"
+      Component = "shipping-service"
+    }
+  )
+}
+
+# Worker - IRSA Trust Policy
+
+data "aws_iam_policy_document" "worker_assume_role" {
+  statement {
+    sid    = "AllowWorkerServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.kubernetes_namespace}:${var.worker_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "worker" {
+  name               = "${var.name_prefix}-worker"
+  description        = "IAM role assumed by the worker Kubernetes workload using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.worker_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-worker"
+      Component = "worker"
+    }
+  )
+}
+
+# SQS Producer Policy
+
+data "aws_iam_policy_document" "sqs_producer" {
+  statement {
+    sid    = "SendMessages"
+    effect = "Allow"
+
+    actions = [
+      "sqs:SendMessage"
+    ]
+
+    resources = var.sqs_queue_arns
+  }
+}
+
+resource "aws_iam_policy" "sqs_producer" {
+  name        = "${var.name_prefix}-sqs-producer"
+  description = "Least-privilege SQS SendMessage permission for event-producing workloads."
+  policy      = data.aws_iam_policy_document.sqs_producer.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name = "${var.name_prefix}-sqs-producer"
+    }
+  )
+}
+
+# Attach producer policy to each producer role
+
+resource "aws_iam_role_policy_attachment" "order_service_sqs" {
+  role       = aws_iam_role.order_service.name
+  policy_arn = aws_iam_policy.sqs_producer.arn
+}
+
+resource "aws_iam_role_policy_attachment" "payment_service_sqs" {
+  role       = aws_iam_role.payment_service.name
+  policy_arn = aws_iam_policy.sqs_producer.arn
+}
+
+resource "aws_iam_role_policy_attachment" "shipping_service_sqs" {
+  role       = aws_iam_role.shipping_service.name
+  policy_arn = aws_iam_policy.sqs_producer.arn
+}
+
+# Worker SQS Consumer Policy
+
+data "aws_iam_policy_document" "worker_sqs" {
+  statement {
+    sid    = "ConsumeMessages"
+    effect = "Allow"
+
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "sqs:ChangeMessageVisibility",
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl"
+    ]
+
+    resources = var.sqs_queue_arns
+  }
+}
+
+resource "aws_iam_policy" "worker_sqs" {
+  name        = "${var.name_prefix}-worker-sqs"
+  description = "Least-privilege SQS consumer permissions for the worker workload."
+  policy      = data.aws_iam_policy_document.worker_sqs.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-worker-sqs"
+      Component = "worker"
+    }
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "worker_sqs" {
+  role       = aws_iam_role.worker.name
+  policy_arn = aws_iam_policy.worker_sqs.arn
+}

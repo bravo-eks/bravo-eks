@@ -182,48 +182,12 @@ services:
     ports:
       - "8085:8085"
     environment:
-      DATABASE_URL: ${SHIPPING_DATABASE_URL}
-      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
-      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
-      AWS_REGION: ${AWS_REGION}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      localstack:
-        condition: service_healthy
-    networks:
-      - bravo-network
-
-  dashboard-api:
-    build:
-      context: ./services/dashboard-api
-      dockerfile: Dockerfile
-    container_name: dashboard-api
-    restart: unless-stopped
-    ports:
-      - "8086:8086"
-    environment:
-      DATABASE_URL: ${DASHBOARD_DATABASE_URL}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bravo-network
-
-  scheduler:
-    build:
-      context: ./services/scheduler
-      dockerfile: Dockerfile
-    container_name: scheduler
-    restart: unless-stopped
-    ports:
-      - "8091:8091"
-    environment:
-      DATABASE_URL: ${ORDER_DATABASE_URL}
-      ORDER_SERVICE_URL: http://order-service:8081
-      INVENTORY_SERVICE_URL: http://inventory-service:8082
+      DATABASE_URL: postgres://app:localdev@postgres:5432/orders?sslmode=disable
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/order-events
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
     depends_on:
       order-service:
         condition: service_started

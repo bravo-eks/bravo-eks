@@ -17,3 +17,18 @@ output "ecr_repository_arns" {
   description = "ARNs of the ECR repositories"
   value       = module.ecr.repository_arns
 }
+
+output "github_ecr_role_arn" {
+  description = "ARN of the GitHub Actions ECR pipeline role"
+  value       = aws_iam_role.github_ecr.arn
+}
+
+output "github_terraform_pr_role_arn" {
+  description = "ARN of the GitHub Actions Terraform PR pipeline role"
+  value       = aws_iam_role.github_terraform_pr.arn
+}
+
+output "github_terraform_deploy_role_arn" {
+  description = "ARN of the GitHub Actions Terraform deploy pipeline role"
+  value       = aws_iam_role.github_terraform_deploy.arn
+}
