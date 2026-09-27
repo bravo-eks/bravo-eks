@@ -221,6 +221,7 @@ services:
     ports:
       - "8091:8091"
     environment:
+      DATABASE_URL: ${ORDER_DATABASE_URL}
       ORDER_SERVICE_URL: http://order-service:8081
       INVENTORY_SERVICE_URL: http://inventory-service:8082
     depends_on:
