@@ -57,15 +57,3 @@ output "worker_role_name" {
   description = "Name of the worker IAM role."
   value       = aws_iam_role.worker.name
 }
-
-# Policies
-
-output "sqs_producer_policy_arn" {
-  description = "ARN of the SQS producer policy."
-  value       = aws_iam_policy.sqs_producer.arn
-}
-
-output "worker_sqs_policy_arn" {
-  description = "ARN of the worker SQS consumer policy."
-  value       = aws_iam_policy.worker_sqs.arn
-}

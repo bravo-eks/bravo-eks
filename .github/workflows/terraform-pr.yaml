@@ -13,6 +13,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: terraform-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 env:
   AWS_REGION: eu-west-2
   TF_IN_AUTOMATION: true
@@ -30,7 +34,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
-          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-plan
+          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-pr
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform

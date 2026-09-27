@@ -12,10 +12,10 @@ resource "aws_iam_openid_connect_provider" "github" {
   ]
 }
 
-# Production role
+# ECR pipeline role
 
-resource "aws_iam_role" "github_actions" {
-  name = "bravo-github-actions"
+resource "aws_iam_role" "github_ecr" {
+  name = "bravo-github-ecr"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -41,11 +41,9 @@ resource "aws_iam_role" "github_actions" {
   })
 }
 
-# Push and pull from ECR Pipeline role
-
-resource "aws_iam_role_policy" "github_actions_ecr" {
-  name = "bravo-github-actions-ecr"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_role_policy" "github_ecr" {
+  name = "bravo-github-ecr-policy"
+  role = aws_iam_role.github_ecr.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -81,10 +79,10 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
   })
 }
 
-# PR Terraform plan pipeline role
+# Terraform PR pipeline role
 
-resource "aws_iam_role" "github_actions_terraform_plan" {
-  name = "bravo-github-terraform-plan"
+resource "aws_iam_role" "github_terraform_pr" {
+  name = "bravo-github-terraform-pr"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -110,9 +108,9 @@ resource "aws_iam_role" "github_actions_terraform_plan" {
   })
 }
 
-resource "aws_iam_role_policy" "github_actions_terraform_plan" {
-  name = "bravo-terraform-plan"
-  role = aws_iam_role.github_actions_terraform_plan.id
+resource "aws_iam_role_policy" "github_terraform_pr" {
+  name = "bravo-github-terraform-pr-policy"
+  role = aws_iam_role.github_terraform_pr.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -192,11 +190,38 @@ resource "aws_iam_role_policy" "github_actions_terraform_plan" {
   })
 }
 
-# Production Terraform plan and apply pipeline role
+# Terraform deploy pipeline role
 
-resource "aws_iam_role_policy" "github_actions_terraform_production" {
-  name = "bravo-terraform-production"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_role" "github_terraform_deploy" {
+  name = "bravo-github-terraform-deploy"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.github.arn
+        }
+
+        Action = "sts:AssumeRoleWithWebIdentity"
+
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks/bravo-eks:environment:production"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "github_terraform_deploy" {
+  name = "bravo-github-terraform-deploy-policy"
+  role = aws_iam_role.github_terraform_deploy.id
 
   policy = jsonencode({
     Version = "2012-10-17"
