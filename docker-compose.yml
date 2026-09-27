@@ -1,38 +1,76 @@
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16.9-alpine
+    container_name: postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: orders
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES}
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - bravo-network
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.2-alpine
+    container_name: redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bravo-network
 
   localstack:
-    image: localstack/localstack:3
+    image: localstack/localstack:3.8
+    container_name: localstack
+    restart: unless-stopped
     ports:
       - "4566:4566"
     environment:
       SERVICES: sqs
       DEFAULT_REGION: us-east-1
-      AWS_DEFAULT_REGION: us-east-1
     volumes:
-      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - bravo-network
 
   api-gateway:
-    build: ./services/api-gateway
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${API_GATEWAY_PORT}:8080"
     environment:
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: local-dev-secret
+      NODE_ENV: ${NODE_ENV}
+      PORT: 8080
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-local-dev-secret}
+      AUTH_ENABLED: false
       ORDER_SERVICE_URL: http://order-service:8081
       INVENTORY_SERVICE_URL: http://inventory-service:8082
       PAYMENT_SERVICE_URL: http://payment-service:8083
@@ -40,102 +78,188 @@ services:
       SHIPPING_SERVICE_URL: http://shipping-service:8085
       DASHBOARD_SERVICE_URL: http://dashboard-api:8086
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      order-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      shipping-service:
+        condition: service_started
+      dashboard-api:
+        condition: service_started
+    networks:
+      - bravo-network
 
   order-service:
-    build: ./services/order-service
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: order-service
+    restart: unless-stopped
     ports:
       - "8081:8081"
     environment:
-      DATABASE_URL: postgres://app:localdev@postgres:5432/orders?sslmode=disable
-      SQS_QUEUE_URL: http://localstack:4566/000000000000/order-events
-      AWS_ENDPOINT_URL: http://localstack:4566
-      AWS_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
+      DATABASE_URL: ${ORDER_DATABASE_URL}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     depends_on:
-      - postgres
-      - localstack
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    networks:
+      - bravo-network
 
   inventory-service:
-    build: ./services/inventory-service
+    build:
+      context: ./services/inventory-service
+      dockerfile: Dockerfile
+    container_name: inventory-service
+    restart: unless-stopped
     ports:
       - "8082:8082"
     environment:
-      DATABASE_URL: postgres://app:localdev@postgres:5432/orders?sslmode=disable
+      DATABASE_URL: ${INVENTORY_DATABASE_URL}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - bravo-network
 
   payment-service:
-    build: ./services/payment-service
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    restart: unless-stopped
     ports:
       - "8083:8083"
     environment:
-      DATABASE_URL: postgres://app:localdev@postgres:5432/orders?sslmode=disable
-      SQS_QUEUE_URL: http://localstack:4566/000000000000/order-events
-      AWS_ENDPOINT_URL: http://localstack:4566
-      AWS_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
+      DATABASE_URL: ${PAYMENT_DATABASE_URL}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     depends_on:
-      - postgres
-      - localstack
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    networks:
+      - bravo-network
 
   notification-service:
-    build: ./services/notification-service
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    restart: unless-stopped
     ports:
       - "8084:8084"
     environment:
-      DATABASE_URL: postgres://app:localdev@postgres:5432/orders?sslmode=disable
+      DATABASE_URL: ${NOTIFICATION_DATABASE_URL}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - bravo-network
 
   shipping-service:
-    build: ./services/shipping-service
+    build:
+      context: ./services/shipping-service
+      dockerfile: Dockerfile
+    container_name: shipping-service
+    restart: unless-stopped
     ports:
       - "8085:8085"
     environment:
-      DATABASE_URL: postgres://app:localdev@postgres:5432/orders?sslmode=disable
-      SQS_QUEUE_URL: http://localstack:4566/000000000000/order-events
-      AWS_ENDPOINT_URL: http://localstack:4566
-      AWS_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
+      DATABASE_URL: ${SHIPPING_DATABASE_URL}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     depends_on:
-      - postgres
-      - localstack
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    networks:
+      - bravo-network
+
+  dashboard-api:
+    build:
+      context: ./services/dashboard-api
+      dockerfile: Dockerfile
+    container_name: dashboard-api
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      DATABASE_URL: ${DASHBOARD_DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bravo-network
+
+  scheduler:
+    build:
+      context: ./services/scheduler
+      dockerfile: Dockerfile
+    container_name: scheduler
+    restart: unless-stopped
+    ports:
+      - "8091:8091"
+    environment:
+      ORDER_SERVICE_URL: http://order-service:8081
+      INVENTORY_SERVICE_URL: http://inventory-service:8082
+    depends_on:
+      order-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+    networks:
+      - bravo-network
 
   worker:
-    build: ./services/worker
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    container_name: worker
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
     environment:
-      SQS_QUEUE_URL: http://localstack:4566/000000000000/order-events
-      AWS_ENDPOINT_URL: http://localstack:4566
-      AWS_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      HEALTH_PORT: 8090
       ORDER_SERVICE_URL: http://order-service:8081
       INVENTORY_SERVICE_URL: http://inventory-service:8082
       PAYMENT_SERVICE_URL: http://payment-service:8083
       NOTIFICATION_SERVICE_URL: http://notification-service:8084
       SHIPPING_SERVICE_URL: http://shipping-service:8085
     depends_on:
-      - localstack
-
-  scheduler:
-    build: ./services/scheduler
-    environment:
-      DATABASE_URL: postgres://app:localdev@postgres:5432/orders?sslmode=disable
-    depends_on:
-      - postgres
-
-  dashboard-api:
-    build: ./services/dashboard-api
-    ports:
-      - "8086:8086"
-    environment:
-      DATABASE_URL: postgres://app:localdev@postgres:5432/orders?sslmode=disable
-    depends_on:
-      - postgres
+      localstack:
+        condition: service_healthy
+    networks:
+      - bravo-network
 
 volumes:
-  pgdata:
+  postgres-data:
+
+networks:
+  bravo-network:
+    driver: bridge
