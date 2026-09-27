@@ -1,12 +1,6 @@
-#ECR
-module "ecr" {
-  source           = "./modules/ecr"
-  ecr_repositories = var.ecr_repositories
-}
-
 # VPC
 module "vpc" {
-  source = "./modules/vpc"
+  source = "../../modules/vpc"
 
   name               = var.vpc_name
   enable_nat_gateway = var.enable_nat_gateway
@@ -14,14 +8,14 @@ module "vpc" {
 
 # SQS
 module "sqs" {
-  source = "./modules/sqs"
+  source = "../../modules/sqs"
 
   queue_name = var.sqs_queue_name
 }
 
 # EKS
 module "eks" {
-  source = "./modules/eks"
+  source = "../../modules/eks"
 
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
@@ -40,7 +34,7 @@ module "eks" {
 
 # IAM
 module "iam" {
-  source = "./modules/iam"
+  source = "../../modules/iam"
 
   name_prefix = "${var.project_name}-${var.environment}"
 
@@ -62,7 +56,7 @@ module "iam" {
 
 # RDS
 module "rds" {
-  source = "./modules/rds"
+  source = "../../modules/rds"
 
   project_name = var.project_name
   environment  = var.environment

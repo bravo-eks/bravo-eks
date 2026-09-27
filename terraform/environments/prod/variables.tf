@@ -1,15 +1,3 @@
-# ECR
-variable "aws_region" {
-  description = "AWS region to deploy resources into"
-  type        = string
-  default     = "eu-west-2"
-}
-
-variable "ecr_repositories" {
-  description = "List of ECR repositories to create"
-  type        = list(string)
-}
-
 # VPC
 variable "vpc_name" {
   description = "Name of the VPC and related networking resources"
