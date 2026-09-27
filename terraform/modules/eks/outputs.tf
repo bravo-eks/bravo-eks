@@ -27,3 +27,8 @@ output "eks_oidc_provider_url" {
   description = "EKS OIDC issuer URL without the https:// prefix."
   value       = replace(aws_iam_openid_connect_provider.this.url, "https://", "")
 }
+
+output "cluster_security_group_id" {
+  description = "Security group ID associated with the EKS cluster"
+  value       = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+}
