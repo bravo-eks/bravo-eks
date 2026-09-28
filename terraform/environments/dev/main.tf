@@ -60,11 +60,6 @@ module "eks" {
   tags                       = local.tags
 }
 
-# Read the EKS-created cluster security group for RDS access
-data "aws_eks_cluster" "dev" {
-  name = module.eks.cluster_name
-}
-
 # RDS PostgreSQL
 module "rds" {
   source = "../../modules/rds"
@@ -73,7 +68,7 @@ module "rds" {
   environment           = var.environment
   vpc_id                = module.vpc.vpc_id
   private_subnet_ids    = module.vpc.database_subnet_ids
-  eks_security_group_id = data.aws_eks_cluster.dev.vpc_config[0].cluster_security_group_id
+  eks_security_group_id = module.eks.cluster_security_group_id
 
   database_name   = var.database_name
   master_username = var.database_master_username
