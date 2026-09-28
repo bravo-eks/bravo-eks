@@ -126,4 +126,14 @@ variable "worker_service_account_name" {
   default     = "worker"
 }
 
+variable "tags" {
+  description = "Tags applied to infrastructure resources"
+  type        = map(string)
 
+  default = {
+    Project     = "bravo-eks"
+    Environment = "prod"
+    ManagedBy   = "Terraform"
+    Team        = "Bravo"
+  }
+}
