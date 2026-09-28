@@ -1,1 +1,23 @@
-# Placeholder - implementation will be added by the relevant Kubernetes ticket.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: bravo-root
+  namespace: argocd
+
+spec:
+  project: bravo
+
+  source:
+    repoURL: https://github.com/bravo-eks/bravo-eks.git
+    targetRevision: main
+    path: kubernetes/argocd/applications/app-groups
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
