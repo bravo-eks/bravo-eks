@@ -1,0 +1,5 @@
+apiVersion: v2
+name: redis
+description: Redis chart for BRAVO
+type: application
+version: 0.1.0
