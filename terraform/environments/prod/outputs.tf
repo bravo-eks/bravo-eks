@@ -1,8 +1,3 @@
-output "ecr_repository_arns" {
-  description = "ARNs of the ECR repositories"
-  value       = module.ecr.repository_arns
-}
-
 # VPC
 output "vpc_id" {
   description = "ID of the VPC"
