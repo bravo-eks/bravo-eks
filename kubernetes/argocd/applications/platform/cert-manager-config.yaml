@@ -6,7 +6,7 @@ metadata:
   namespace: argocd
 
 spec:
-  project: bravo
+  project: bravo-platform
 
   source:
     repoURL: https://github.com/bravo-eks/bravo-eks.git
