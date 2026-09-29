@@ -1,0 +1,10 @@
+configs:
+  cm:
+    admin.enabled: true
+
+  rbac:
+    policy.default: role:readonly
+
+server:
+  service:
+    type: ClusterIP
