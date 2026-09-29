@@ -6,7 +6,7 @@ metadata:
   namespace: argocd
 
 spec:
-  project: bravo
+  project: bravo-platform
 
   sources:
     - repoURL: https://kubernetes-sigs.github.io/external-dns/

@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: bravo-platform
+  namespace: argocd
+spec:
+  description: Bravo platform services
+
+  sourceRepos:
+    - https://github.com/bravo-eks/bravo-eks.git
+    - https://helm.traefik.io/traefik
+    - https://charts.jetstack.io
+    - https://kubernetes-sigs.github.io/external-dns/
+    - https://charts.external-secrets.io
+    - public.ecr.aws/karpenter
+
+  destinations:
+    - namespace: traefik
+      server: https://kubernetes.default.svc
+
+    - namespace: cert-manager
+      server: https://kubernetes.default.svc
+
+    - namespace: external-dns
+      server: https://kubernetes.default.svc
+
+    - namespace: external-secrets
+      server: https://kubernetes.default.svc
+
+    - namespace: karpenter
+      server: https://kubernetes.default.svc
+
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
