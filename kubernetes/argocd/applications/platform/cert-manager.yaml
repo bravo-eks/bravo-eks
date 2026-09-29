@@ -1,1 +1,32 @@
-# Placeholder - implementation will be added by the relevant Kubernetes ticket.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: cert-manager
+  namespace: argocd
+
+spec:
+  project: bravo
+
+  sources:
+    - repoURL: quay.io/jetstack/charts
+      chart: cert-manager
+      targetRevision: v1.19.6
+      helm:
+        valueFiles:
+          - $values/kubernetes/platform/cert-manager/values.yaml
+
+    - repoURL: https://github.com/bravo-eks/bravo-eks.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
