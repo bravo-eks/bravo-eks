@@ -32,3 +32,14 @@ Selector labels
 app.kubernetes.io/name: {{ include "bravo-app.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+ServiceAccount name
+*/}}
+{{- define "bravo-app.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "bravo-app.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
