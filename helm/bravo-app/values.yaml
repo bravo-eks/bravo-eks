@@ -10,7 +10,6 @@ image:
 
 service:
   type: ClusterIP
-  portName: http
   port: 80
   targetPort: 8080
 
