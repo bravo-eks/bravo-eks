@@ -1,1 +1,28 @@
-# Placeholder - implementation will be added by the relevant Kubernetes ticket.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: notification-service
+  namespace: argocd
+
+spec:
+  project: bravo-apps
+
+  source:
+    repoURL: https://github.com/bravo-eks/bravo-eks.git
+    targetRevision: main
+    path: kubernetes/helm/microservices
+    helm:
+      valueFiles:
+        - ../service-values/notification-service.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: microservices
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -14,4 +14,16 @@ serviceAccount:
 image:
   repository: ""
   tag: ""
+
   pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8080
+
+pdb:
+  enabled: false
+  minAvailable: 1
+  maxUnavailable: null
