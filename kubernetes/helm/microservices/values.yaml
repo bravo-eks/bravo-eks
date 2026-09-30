@@ -23,6 +23,19 @@ service:
   port: 80
   targetPort: 8080
 
+httpRoute:
+  enabled: false
+
+  parentRefs:
+    - name: bravo-gateway
+      namespace: traefik
+
+  hostnames: []
+
+  path:
+    type: PathPrefix
+    value: /
+
 autoscaling:
   enabled: false
   minReplicas: 1
