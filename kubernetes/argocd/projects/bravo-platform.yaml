@@ -8,13 +8,17 @@ spec:
 
   sourceRepos:
     - https://github.com/bravo-eks/bravo-eks.git
-    - https://helm.traefik.io/traefik
+    - https://traefik.github.io/charts
     - https://charts.jetstack.io
     - https://kubernetes-sigs.github.io/external-dns/
     - https://charts.external-secrets.io
     - public.ecr.aws/karpenter
+    - https://github.com/kubernetes-sigs/gateway-api.git
 
   destinations:
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+
     - namespace: traefik
       server: https://kubernetes.default.svc
 
@@ -51,6 +55,8 @@ spec:
 
     - group: karpenter.k8s.aws
       kind: EC2NodeClass
+    - group: gateway.networking.k8s.io
+      kind: GatewayClass
 
   namespaceResourceWhitelist:
     - group: "*"
