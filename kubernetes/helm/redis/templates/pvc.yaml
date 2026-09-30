@@ -4,8 +4,8 @@ metadata:
   name: redis-data
 spec:
   accessModes:
-    - ReadWriteOnce
-  storageClassName: gp3
+    - {{ .Values.persistence.accessMode }}
+  storageClassName: {{ .Values.persistence.storageClass }}
   resources:
     requests:
-      storage: 10Gi
+      storage: {{ .Values.persistence.size }}
