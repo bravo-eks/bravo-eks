@@ -1,1 +1,71 @@
-# Placeholder - implementation will be added by the relevant Kubernetes ticket.
+replicaCount: 2
+
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 8081
+    protocol: TCP
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8081
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+env: []
+
+envFrom: []
+
+configMap:
+  enabled: false
+
+externalSecret:
+  enabled: true
+
+hpa:
+  enabled: false
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+ingress:
+  enabled: false
+
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - service: api-gateway
+  egressTo: []
+  allowPostgres: true
+  allowRedis: false
+  allowExternalHTTPS: false
