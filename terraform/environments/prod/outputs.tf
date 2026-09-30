@@ -97,3 +97,9 @@ output "worker_role_arn" {
   description = "IAM role ARN for worker"
   value       = module.iam.worker_role_arn
 }
+
+# Karpenter
+output "karpenter_controller_role_arn" {
+  description = "IAM role ARN for the Karpenter controller"
+  value       = module.iam.karpenter_controller_role_arn
+}
