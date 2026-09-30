@@ -1,0 +1,28 @@
+{{- if .Values.httpRoute.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+
+metadata:
+  name: {{ include "bravo-app.fullname" . }}
+  labels:
+    {{- include "bravo-app.labels" . | nindent 4 }}
+
+spec:
+  parentRefs:
+    {{- toYaml .Values.httpRoute.parentRefs | nindent 4 }}
+
+  {{- with .Values.httpRoute.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  rules:
+    - matches:
+        - path:
+            type: {{ .Values.httpRoute.path.type }}
+            value: {{ .Values.httpRoute.path.value | quote }}
+
+      backendRefs:
+        - name: {{ include "bravo-app.fullname" . }}
+          port: {{ .Values.service.port }}
+{{- end }}
