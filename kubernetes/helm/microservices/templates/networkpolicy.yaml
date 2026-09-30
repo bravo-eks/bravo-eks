@@ -72,23 +72,7 @@ spec:
 
   ingress:
 
-    {{- if $service.networkPolicy.ingressFrom }}
-
     {{- range $sourceService := $service.networkPolicy.ingressFrom }}
-
-    {{- if eq $sourceService "api-gateway" }}
-
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: api-gateway
-              app.kubernetes.io/instance: {{ $.Release.Name }}
-
-      ports:
-        - protocol: TCP
-          port: {{ $service.port }}
-
-    {{- else }}
 
     - from:
         - podSelector:
@@ -99,10 +83,6 @@ spec:
       ports:
         - protocol: TCP
           port: {{ $service.port }}
-
-    {{- end }}
-
-    {{- end }}
 
     {{- end }}
 
@@ -122,7 +102,6 @@ spec:
 
     {{- end }}
 
-
     {{- if $service.networkPolicy.allowPostgres }}
 
     - ports:
@@ -130,7 +109,6 @@ spec:
           port: {{ $.Values.networkPolicy.postgres.port }}
 
     {{- end }}
-
 
     {{- if $service.networkPolicy.allowRedis }}
 
