@@ -4,6 +4,8 @@ kind: Application
 metadata:
   name: cert-manager-config
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 
 spec:
   project: bravo-platform
