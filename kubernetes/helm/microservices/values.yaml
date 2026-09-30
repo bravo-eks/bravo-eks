@@ -1,15 +1,25 @@
-nameOverride: ""
-fullnameOverride: ""
-
 replicaCount: 1
+
+strategy:
+  rollingUpdate:
+    maxUnavailable: 25%
+    maxSurge: 25%
+
+terminationGracePeriodSeconds: 30
+
+serviceAccount:
+  create: false
+  name: ""
 
 image:
   repository: ""
   tag: ""
+
   pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
+  portName: http
   port: 80
   targetPort: 8080
 
@@ -34,3 +44,7 @@ autoscaling:
         - type: Percent
           value: 50
           periodSeconds: 60
+pdb:
+  enabled: false
+  minAvailable: 1
+  maxUnavailable: null
