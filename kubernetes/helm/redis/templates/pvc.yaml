@@ -1,1 +1,11 @@
-# Placeholder - implementation will be added by the relevant Kubernetes ticket.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp3
+  resources:
+    requests:
+      storage: 10Gi
