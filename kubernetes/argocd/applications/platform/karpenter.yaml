@@ -1,9 +1,12 @@
+# Installs Karpenter
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 
 metadata:
   name: karpenter
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 
 spec:
   project: bravo-platform
@@ -22,9 +25,11 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: kube-system
+    namespace: karpenter
 
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

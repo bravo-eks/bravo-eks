@@ -50,6 +50,11 @@ spec:
     - group: cert-manager.io
       kind: ClusterIssuer
 
+    - group: karpenter.sh
+      kind: NodePool
+
+    - group: karpenter.k8s.aws
+      kind: EC2NodeClass
     - group: gateway.networking.k8s.io
       kind: GatewayClass
 
