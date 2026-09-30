@@ -1,1 +1,15 @@
-# Placeholder - implementation will be added by the relevant Kubernetes ticket.
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  clusterIP: None
+  ports:
+    - name: redis
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+  selector:
+    app: redis
