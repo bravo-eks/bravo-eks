@@ -1,11 +1,20 @@
-nameOverride: ""
-fullnameOverride: ""
-
 replicaCount: 1
+
+strategy:
+  rollingUpdate:
+    maxUnavailable: 25%
+    maxSurge: 25%
+
+terminationGracePeriodSeconds: 30
+
+serviceAccount:
+  create: false
+  name: ""
 
 image:
   repository: ""
   tag: ""
+
   pullPolicy: IfNotPresent
 
 service:
