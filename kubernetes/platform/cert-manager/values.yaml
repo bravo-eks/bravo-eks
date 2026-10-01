@@ -3,7 +3,7 @@ crds:
   keep: true
 
 config:
-  enableGatewayAPI: true
+  enablegatewayAPI: true
 
 resources:
   requests:
