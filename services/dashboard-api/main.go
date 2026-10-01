@@ -88,7 +88,7 @@ func main() {
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	status := "ok"
 
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(r.Context()); err != nil {
 		status = "unhealthy"
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
