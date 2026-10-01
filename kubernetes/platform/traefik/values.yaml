@@ -38,9 +38,6 @@ gateway:
   enabled: true
   name: bravo-gateway
 
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-
   listeners:
     web:
       port: 8000
