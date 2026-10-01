@@ -13,10 +13,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
+var sqsClient *sqs.Client
+var sqsQueueURL string
 
 type Order struct {
 	ID         int             `json:"id"`
@@ -58,7 +62,17 @@ func main() {
 		log.Fatal("DATABASE_URL is required")
 	}
 
-	var err error
+	sqsQueueURL = os.Getenv("SQS_QUEUE_URL")
+	if sqsQueueURL == "" {
+		log.Fatal("SQS_QUEUE_URL is required")
+	}
+
+	awsConfig, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to load AWS configuration: %v", err)
+	}
+	sqsClient = sqs.NewFromConfig(awsConfig)
+
 	db, err = sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -70,7 +84,10 @@ func main() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	waitForDB()
-	migrate()
+
+	if getEnv("RUN_MIGRATIONS", "false") == "true" {
+		migrate()
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/livez", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
@@ -186,6 +203,21 @@ func createOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for _, item := range req.Items {
+		if item.ProductID == "" {
+			httpError(w, "product_id is required", http.StatusBadRequest)
+			return
+		}
+		if item.Quantity <= 0 {
+			httpError(w, "quantity must be greater than zero", http.StatusBadRequest)
+			return
+		}
+		if item.Price < 0 {
+			httpError(w, "price cannot be negative", http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Calculate total
 	var total float64
 	for _, item := range req.Items {
@@ -197,10 +229,23 @@ func createOrder(w http.ResponseWriter, r *http.Request) {
 		currency = "GBP"
 	}
 
-	itemsJSON, _ := json.Marshal(req.Items)
+	itemsJSON, err := json.Marshal(req.Items)
+	if err != nil {
+		httpError(w, "failed to process order items", http.StatusInternalServerError)
+		return
+	}
+
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		log.Printf("Begin order transaction error: %v", err)
+		httpError(w, "failed to create order", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
 
 	var orderID int
-	err := db.QueryRow(
+	err = tx.QueryRowContext(
+		r.Context(),
 		`INSERT INTO orders (customer_id, status, items, total, currency, notes)
 		 VALUES ($1, 'pending', $2, $3, $4, $5) RETURNING id`,
 		customerID, itemsJSON, total, currency, req.Notes,
@@ -213,20 +258,35 @@ func createOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record event
-	db.Exec(
+	if _, err := tx.ExecContext(
+		r.Context(),
 		`INSERT INTO order_events (order_id, event_type, new_status)
 		 VALUES ($1, 'order_created', 'pending')`,
 		orderID,
-	)
+	); err != nil {
+		log.Printf("Create order event error: %v", err)
+		httpError(w, "failed to create order", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("Commit order transaction error: %v", err)
+		httpError(w, "failed to create order", http.StatusInternalServerError)
+		return
+	}
 
 	// Publish to SQS for downstream services (inventory reservation, etc.)
-	publishEvent("order.created", map[string]interface{}{
+	if err := publishEvent(r.Context(), "order.created", map[string]interface{}{
 		"order_id":    orderID,
 		"customer_id": customerID,
 		"items":       req.Items,
 		"total":       total,
 		"currency":    currency,
-	})
+	}); err != nil {
+		log.Printf("Failed to publish order.created event for order %d: %v", orderID, err)
+		httpError(w, "order created but event publishing failed", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -313,11 +373,33 @@ func handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.OrderID <= 0 || req.NewStatus == "" {
+		httpError(w, "order_id and new_status are required", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		log.Printf("Begin status transaction error: %v", err)
+		httpError(w, "failed to update order", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
 	// Get current status
 	var currentStatus string
-	err := db.QueryRow("SELECT status FROM orders WHERE id = $1", req.OrderID).Scan(&currentStatus)
-	if err != nil {
+	err = tx.QueryRowContext(
+		r.Context(),
+		"SELECT status FROM orders WHERE id = $1 FOR UPDATE",
+		req.OrderID,
+	).Scan(&currentStatus)
+	if err == sql.ErrNoRows {
 		httpError(w, "order not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		log.Printf("Get order status error: %v", err)
+		httpError(w, "failed to update order", http.StatusInternalServerError)
 		return
 	}
 
@@ -340,28 +422,45 @@ func handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = db.Exec(
+	_, err = tx.ExecContext(
+		r.Context(),
 		"UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2",
 		req.NewStatus, req.OrderID,
 	)
 	if err != nil {
+		log.Printf("Update order status error: %v", err)
 		httpError(w, "failed to update order", http.StatusInternalServerError)
 		return
 	}
 
 	// Record event
-	db.Exec(
+	if _, err := tx.ExecContext(
+		r.Context(),
 		`INSERT INTO order_events (order_id, event_type, old_status, new_status)
 		 VALUES ($1, 'status_changed', $2, $3)`,
 		req.OrderID, currentStatus, req.NewStatus,
-	)
+	); err != nil {
+		log.Printf("Create status event error: %v", err)
+		httpError(w, "failed to update order", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("Commit status transaction error: %v", err)
+		httpError(w, "failed to update order", http.StatusInternalServerError)
+		return
+	}
 
 	// Publish event
-	publishEvent("order.status_changed", map[string]interface{}{
+	if err := publishEvent(r.Context(), "order.status_changed", map[string]interface{}{
 		"order_id":   req.OrderID,
 		"old_status": currentStatus,
 		"new_status": req.NewStatus,
-	})
+	}); err != nil {
+		log.Printf("Failed to publish order.status_changed event for order %d: %v", req.OrderID, err)
+		httpError(w, "order updated but event publishing failed", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -371,21 +470,30 @@ func handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func publishEvent(eventType string, payload map[string]interface{}) {
-	sqsQueue := os.Getenv("SQS_QUEUE_URL")
-	if sqsQueue == "" {
-		log.Printf("Event (no SQS): %s %v", eventType, payload)
-		return
-	}
-
+func publishEvent(ctx context.Context, eventType string, payload map[string]interface{}) error {
 	event := map[string]interface{}{
 		"type":      eventType,
 		"payload":   payload,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
-	data, _ := json.Marshal(event)
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("marshal event: %w", err)
+	}
+
+	messageBody := string(data)
+
+	_, err = sqsClient.SendMessage(ctx, &sqs.SendMessageInput{
+		QueueUrl:    &sqsQueueURL,
+		MessageBody: &messageBody,
+	})
+	if err != nil {
+		return fmt.Errorf("send SQS message: %w", err)
+	}
+
 	log.Printf("Event -> SQS: %s", string(data))
-	// Students implement actual SQS SendMessage here
+	return nil
 }
 
 func httpError(w http.ResponseWriter, msg string, code int) {
