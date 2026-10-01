@@ -292,3 +292,91 @@ resource "aws_iam_role_policy_attachment" "worker_sqs" {
   role       = aws_iam_role.worker.name
   policy_arn = aws_iam_policy.worker_sqs.arn
 }
+
+# External Secrets Operator - IRSA Trust Policy
+
+data "aws_iam_policy_document" "external_secrets_assume_role" {
+  statement {
+    sid    = "AllowExternalSecretsServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.external_secrets_namespace}:${var.external_secrets_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "external_secrets" {
+  name               = "${var.name_prefix}-external-secrets"
+  description        = "IAM role assumed by External Secrets Operator using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.external_secrets_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-external-secrets"
+      Component = "external-secrets"
+    }
+  )
+}
+
+# External Secrets Operator - Secrets Manager Policy
+
+data "aws_iam_policy_document" "external_secrets" {
+  statement {
+    sid    = "ReadSecrets"
+    effect = "Allow"
+
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret"
+    ]
+
+    resources = var.external_secrets_secret_arns
+  }
+}
+
+resource "aws_iam_policy" "external_secrets" {
+  name        = "${var.name_prefix}-external-secrets"
+  description = "Allows External Secrets Operator to read approved AWS Secrets Manager secrets."
+  policy      = data.aws_iam_policy_document.external_secrets.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-external-secrets"
+      Component = "external-secrets"
+    }
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "external_secrets" {
+  role       = aws_iam_role.external_secrets.name
+  policy_arn = aws_iam_policy.external_secrets.arn
+}

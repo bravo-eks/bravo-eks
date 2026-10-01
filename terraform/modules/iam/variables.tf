@@ -81,3 +81,20 @@ variable "sqs_queue_arns" {
     error_message = "At least one SQS queue ARN must be supplied."
   }
 }
+
+variable "external_secrets_namespace" {
+  description = "Kubernetes namespace used by External Secrets Operator."
+  type        = string
+  default     = "external-secrets"
+}
+
+variable "external_secrets_service_account_name" {
+  description = "Kubernetes ServiceAccount used by External Secrets Operator."
+  type        = string
+  default     = "external-secrets"
+}
+
+variable "external_secrets_secret_arns" {
+  description = "Secrets Manager secret ARNs that External Secrets Operator is allowed to read."
+  type        = list(string)
+}
