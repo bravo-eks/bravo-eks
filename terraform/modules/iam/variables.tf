@@ -98,3 +98,15 @@ variable "external_secrets_secret_arns" {
   description = "Secrets Manager secret ARNs that External Secrets Operator is allowed to read."
   type        = list(string)
 }
+
+variable "external_dns_namespace" {
+  description = "Kubernetes namespace used by ExternalDNS."
+  type        = string
+  default     = "external-dns"
+}
+
+variable "external_dns_service_account_name" {
+  description = "Kubernetes ServiceAccount used by ExternalDNS."
+  type        = string
+  default     = "external-dns"
+}
