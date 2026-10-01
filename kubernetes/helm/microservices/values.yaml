@@ -27,3 +27,17 @@ pdb:
   enabled: false
   minAvailable: 1
   maxUnavailable: null
+
+externalSecret:
+  enabled: false
+
+  refreshInterval: 1h
+
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+
+  target:
+    name: ""
+
+  data: []
