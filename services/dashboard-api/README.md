@@ -96,72 +96,27 @@ This ensures database failures are reported to the caller instead of returning m
 
 ## Validation and Testing
 
-### Formatting
+### Formatting and Build
 
-The updated Go source should be formatted using:
+`main.go` was formatted with `gofmt`. The service built successfully using Go 1.22.
 
-```sh
-gofmt -w main.go
-```
+### Health Checks
 
-### Tests
+Testing used a real local PostgreSQL 16 container. With PostgreSQL available, `/livez` and `/healthz` returned HTTP 200. After PostgreSQL was stopped, `/healthz` returned HTTP 503 with status `unhealthy`.
 
-Run the Dashboard API tests using:
+### Dashboard Endpoint Integration Tests
 
-```sh
-go test ./...
-```
+- `/dashboard/orders/stats` returned HTTP 200 with real order data from PostgreSQL.
+- `/dashboard/revenue` returned HTTP 200 with real payment and refund data.
+- `/dashboard/inventory/alerts` returned HTTP 200.
+- `/dashboard/shipping/overview` returned HTTP 500 while the `shipments` table was unavailable. After the Shipping Service migrations created the shipping schema, it returned HTTP 200.
+- `/dashboard/summary` returned HTTP 500 while a required database dependency was unavailable. Once the schema was available, it returned HTTP 200 with real order, inventory, revenue, and shipping data.
 
-### Build
-
-Build the service using:
-
-```sh
-go build .
-```
-
-### Database Configuration Test
-
-Run the service without `DATABASE_URL`:
-
-```sh
-go run .
-```
-
-Expected behaviour:
-
-```text
-DATABASE_URL is required
-```
-
-The application should fail during startup because the database configuration is required.
-
-### Database Error Handling Test
-
-With the application running, make a request to a dashboard endpoint while the database is unavailable.
-
-For example:
-
-```sh
-GET /dashboard/summary
-```
-
-Expected behaviour:
-
-```text
-HTTP 500
-{
-  "error": "query failed"
-}
-```
-
-The API should return an HTTP 500 response rather than returning zero values or an incomplete dashboard response.
+These tests confirmed that database failures are surfaced instead of returning misleading partial or zero-valued dashboard data.
 
 ### Read-Only Validation
 
-The Dashboard API should continue to perform only database reads.
-
-No write operations were introduced as part of BRAVO-108.
+The Dashboard API remains read-only. No database write operations were introduced.
 
 ## Result
 
