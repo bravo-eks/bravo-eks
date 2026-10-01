@@ -37,10 +37,13 @@ func main() {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(3)
 	db.SetConnMaxLifetime(5 * time.Minute)
+
 	waitForDB()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/livez", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("/livez", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 	mux.HandleFunc("/healthz", handleHealth)
 	mux.HandleFunc("/dashboard/healthz", handleHealth)
 	mux.HandleFunc("/dashboard/summary", handleSummary)
@@ -76,6 +79,7 @@ func main() {
 	log.Println("Shutting down...")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("graceful shutdown error: %v", err)
 	}
@@ -83,12 +87,17 @@ func main() {
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	status := "ok"
+
 	if err := db.Ping(); err != nil {
 		status = "unhealthy"
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": status, "service": "dashboard-api"})
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  status,
+		"service": "dashboard-api",
+	})
 }
 
 func handleSummary(w http.ResponseWriter, r *http.Request) {
@@ -98,57 +107,134 @@ func handleSummary(w http.ResponseWriter, r *http.Request) {
 
 	// Order counts
 	var totalOrders, ordersToday int
-	db.QueryRow("SELECT COUNT(*) FROM orders").Scan(&totalOrders)
-	db.QueryRow("SELECT COUNT(*) FROM orders WHERE created_at >= $1", today).Scan(&ordersToday)
+
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM orders",
+	).Scan(&totalOrders); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM orders WHERE created_at >= $1",
+		today,
+	).Scan(&ordersToday); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
 
 	// Orders by status
 	statusCounts := map[string]int{}
-	rows, err := db.Query("SELECT status, COUNT(*) FROM orders GROUP BY status")
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var status string
-			var count int
-			rows.Scan(&status, &count)
-			statusCounts[status] = count
+
+	rows, err := db.Query(
+		"SELECT status, COUNT(*) FROM orders GROUP BY status",
+	)
+	if err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var status string
+		var count int
+
+		if err := rows.Scan(&status, &count); err != nil {
+			httpError(w, "query failed", http.StatusInternalServerError)
+			return
 		}
+
+		statusCounts[status] = count
+	}
+
+	if err := rows.Err(); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
 	}
 
 	// Revenue (charges minus refunds)
 	var totalCharges, totalRefunds, todayCharges, todayRefunds float64
-	db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status IN ('completed','partially_refunded','refunded') AND (method IS NULL OR method != 'refund')").Scan(&totalCharges)
-	db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'completed' AND method = 'refund'").Scan(&totalRefunds)
-	db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status IN ('completed','partially_refunded','refunded') AND (method IS NULL OR method != 'refund') AND created_at >= $1", today).Scan(&todayCharges)
-	db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'completed' AND method = 'refund' AND created_at >= $1", today).Scan(&todayRefunds)
+
+	if err := db.QueryRow(
+		"SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status IN ('completed','partially_refunded','refunded') AND (method IS NULL OR method != 'refund')",
+	).Scan(&totalCharges); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+
+	if err := db.QueryRow(
+		"SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'completed' AND method = 'refund'",
+	).Scan(&totalRefunds); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+
+	if err := db.QueryRow(
+		"SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status IN ('completed','partially_refunded','refunded') AND (method IS NULL OR method != 'refund') AND created_at >= $1",
+		today,
+	).Scan(&todayCharges); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+
+	if err := db.QueryRow(
+		"SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'completed' AND method = 'refund' AND created_at >= $1",
+		today,
+	).Scan(&todayRefunds); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+
 	totalRevenue := totalCharges - totalRefunds
 	revenueToday := todayCharges - todayRefunds
 
 	// Product count
 	var totalProducts int
-	db.QueryRow("SELECT COUNT(*) FROM products").Scan(&totalProducts)
+
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM products",
+	).Scan(&totalProducts); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
 
 	// Low stock count
 	var lowStockCount int
-	db.QueryRow("SELECT COUNT(*) FROM products WHERE (stock - reserved) < 10").Scan(&lowStockCount)
+
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM products WHERE (stock - reserved) < 10",
+	).Scan(&lowStockCount); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
 
 	// Active shipments
 	var activeShipments int
-	db.QueryRow("SELECT COUNT(*) FROM shipments WHERE status NOT IN ('delivered', 'cancelled')").Scan(&activeShipments)
+
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM shipments WHERE status NOT IN ('delivered', 'cancelled')",
+	).Scan(&activeShipments); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
 
 	summary["orders"] = map[string]interface{}{
-		"total":      totalOrders,
-		"today":      ordersToday,
-		"by_status":  statusCounts,
+		"total":     totalOrders,
+		"today":     ordersToday,
+		"by_status": statusCounts,
 	}
+
 	summary["revenue"] = map[string]interface{}{
 		"total":    totalRevenue,
 		"today":    revenueToday,
 		"currency": "GBP",
 	}
+
 	summary["inventory"] = map[string]interface{}{
 		"total_products": totalProducts,
 		"low_stock":      lowStockCount,
 	}
+
 	summary["shipping"] = map[string]interface{}{
 		"active_shipments": activeShipments,
 	}
@@ -179,10 +265,21 @@ func handleOrderStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stats := []DayStat{}
+
 	for rows.Next() {
 		var s DayStat
-		rows.Scan(&s.Date, &s.Orders, &s.Revenue)
+
+		if err := rows.Scan(&s.Date, &s.Orders, &s.Revenue); err != nil {
+			httpError(w, "query failed", http.StatusInternalServerError)
+			return
+		}
+
 		stats = append(stats, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -193,13 +290,19 @@ func handleRevenue(w http.ResponseWriter, r *http.Request) {
 	// Revenue breakdown
 	var total, refunded, net float64
 
-	db.QueryRow(
+	if err := db.QueryRow(
 		"SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status IN ('completed', 'partially_refunded', 'refunded') AND (method IS NULL OR method != 'refund')",
-	).Scan(&total)
+	).Scan(&total); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
 
-	db.QueryRow(
+	if err := db.QueryRow(
 		"SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'completed' AND method = 'refund'",
-	).Scan(&refunded)
+	).Scan(&refunded); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
 
 	net = total - refunded
 
@@ -212,6 +315,11 @@ func handleRevenue(w http.ResponseWriter, r *http.Request) {
 		 GROUP BY DATE(created_at)
 		 ORDER BY day DESC`,
 	)
+	if err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
 	type DayRevenue struct {
 		Date    string  `json:"date"`
@@ -219,13 +327,21 @@ func handleRevenue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	daily := []DayRevenue{}
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var d DayRevenue
-			rows.Scan(&d.Date, &d.Revenue)
-			daily = append(daily, d)
+
+	for rows.Next() {
+		var d DayRevenue
+
+		if err := rows.Scan(&d.Date, &d.Revenue); err != nil {
+			httpError(w, "query failed", http.StatusInternalServerError)
+			return
 		}
+
+		daily = append(daily, d)
+	}
+
+	if err := rows.Err(); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -261,10 +377,28 @@ func handleInventoryAlerts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	alerts := []Alert{}
+
 	for rows.Next() {
 		var a Alert
-		rows.Scan(&a.ID, &a.Name, &a.SKU, &a.Stock, &a.Reserved, &a.Available)
+
+		if err := rows.Scan(
+			&a.ID,
+			&a.Name,
+			&a.SKU,
+			&a.Stock,
+			&a.Reserved,
+			&a.Available,
+		); err != nil {
+			httpError(w, "query failed", http.StatusInternalServerError)
+			return
+		}
+
 		alerts = append(alerts, a)
+	}
+
+	if err := rows.Err(); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -274,36 +408,72 @@ func handleInventoryAlerts(w http.ResponseWriter, r *http.Request) {
 func handleShippingOverview(w http.ResponseWriter, r *http.Request) {
 	// Shipments by status
 	statusCounts := map[string]int{}
-	rows, err := db.Query("SELECT status, COUNT(*) FROM shipments GROUP BY status")
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var status string
-			var count int
-			rows.Scan(&status, &count)
-			statusCounts[status] = count
+
+	rows, err := db.Query(
+		"SELECT status, COUNT(*) FROM shipments GROUP BY status",
+	)
+	if err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var status string
+		var count int
+
+		if err := rows.Scan(&status, &count); err != nil {
+			httpError(w, "query failed", http.StatusInternalServerError)
+			return
 		}
+
+		statusCounts[status] = count
+	}
+
+	if err := rows.Err(); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
 	}
 
 	// Carrier breakdown
 	carrierCounts := map[string]int{}
-	rows2, err := db.Query("SELECT carrier, COUNT(*) FROM shipments GROUP BY carrier")
-	if err == nil {
-		defer rows2.Close()
-		for rows2.Next() {
-			var carrier string
-			var count int
-			rows2.Scan(&carrier, &count)
-			carrierCounts[carrier] = count
+
+	rows2, err := db.Query(
+		"SELECT carrier, COUNT(*) FROM shipments GROUP BY carrier",
+	)
+	if err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+	defer rows2.Close()
+
+	for rows2.Next() {
+		var carrier string
+		var count int
+
+		if err := rows2.Scan(&carrier, &count); err != nil {
+			httpError(w, "query failed", http.StatusInternalServerError)
+			return
 		}
+
+		carrierCounts[carrier] = count
+	}
+
+	if err := rows2.Err(); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
 	}
 
 	// Average delivery time
 	var avgDeliveryHours float64
-	db.QueryRow(
+
+	if err := db.QueryRow(
 		`SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (delivered_at - shipped_at)) / 3600), 0)
 		 FROM shipments WHERE delivered_at IS NOT NULL AND shipped_at IS NOT NULL`,
-	).Scan(&avgDeliveryHours)
+	).Scan(&avgDeliveryHours); err != nil {
+		httpError(w, "query failed", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -331,8 +501,10 @@ func waitForDB() {
 		if err := db.Ping(); err == nil {
 			return
 		}
+
 		log.Printf("Waiting for database... (%d/120)", i+1)
 		time.Sleep(time.Second)
 	}
+
 	log.Fatal("Database not ready after 120s")
 }
