@@ -119,135 +119,37 @@ Each job also runs immediately when the scheduler starts.
 
 ## Validation and Testing
 
-The scheduler hardening changes were validated locally using Go 1.22 and PostgreSQL 16. These were local integration tests and were not run against AWS or RDS.
+The scheduler was built with Go 1.22 and tested locally against PostgreSQL 16.
 
 ### Go Build Test
 
-Go 1.22 was verified using the `golang:1.22` Docker image, which reported Go `1.22.12`.
+The Go 1.22 build completed successfully.
 
-The scheduler was formatted successfully using `gofmt`.
+### Scheduler Startup and Job Isolation Test
 
-`go build ./...` completed successfully with exit code `0`.
+The Scheduler Service started successfully against PostgreSQL 16. All five scheduled jobs started and ran independently:
 
-### Scheduler Startup Test
+- `expire_reservations`
+- `abandoned_carts`
+- `retry_failed_payments`
+- `daily_digest`
+- `cleanup_old_events`
 
-The Scheduler Service started successfully against the PostgreSQL test database.
+`/livez` returned HTTP 200. With the database available, `/healthz` returned HTTP 200.
 
-All five scheduled jobs performed their immediate startup run.
+### Database Outage and Recovery Test
 
-### Health Probe Test
-
-`/livez` responded successfully.
-
-`/healthz` responded successfully while PostgreSQL was available.
+PostgreSQL was stopped to simulate a database outage. `expire_reservations` correctly reported failure rather than success, while the Scheduler Service remained running. After PostgreSQL was restarted, `expire_reservations` succeeded automatically on its next run.
 
 ### Reservation Expiry Test
 
-An expired active reservation for order `9001` was created with quantity `2`.
-
-Before processing, the associated product had a reserved quantity of `5`.
-
-After the scheduler ran:
-
-- the reservation status changed to `expired`;
-- the product reserved quantity changed from `5` to `3`.
-
-This confirmed the scheduler made the expected PostgreSQL side effects.
+An expired active reservation for 3 units was created. The scheduler changed its status from `active` to `expired`; the product's reserved quantity changed from 3 to 0 while stock remained 10. Database queries confirmed both changes.
 
 ### Abandoned Order Test
 
-Order `1001` was created in `pending` status with a creation time more than 30 minutes old.
+A `pending` order older than 30 minutes was created. `abandoned_carts` detected it and changed its status to `cancelled`. Database queries confirmed the order change.
 
-After the scheduler ran, PostgreSQL showed the order status as `cancelled`.
-
-### Old Event Cleanup Test
-
-An `order_events` row more than 90 days old was created.
-
-After the cleanup job ran, querying PostgreSQL returned zero matching old test events, confirming the row had been deleted.
-
-### Failed Payment Reporting Test
-
-A failed payment created within the previous hour was added to PostgreSQL.
-
-The scheduler detected one failed payment eligible for retry and logged the result successfully.
-
-### Daily Digest Test
-
-Seeded order and payment data was used to exercise the daily digest.
-
-The scheduler reported:
-
-- 2 orders for the current day during the initial test;
-- 1 pending order;
-- 1 completed order;
-- completed-payment revenue of `50.00`.
-
-The digest completed successfully with the available PostgreSQL data.
-
-### Reporting Database Failure Test
-
-The `payments` table was temporarily made unavailable to simulate a PostgreSQL failure.
-
-The scheduler correctly logged:
-
-- `retry_failed_payments` as failed because the `payments` relation was unavailable;
-- `daily_digest` as failed when its revenue query could not access the `payments` table.
-
-At the same time:
-
-- `cleanup_old_events` completed;
-- `expire_reservations` completed;
-- `abandoned_carts` completed.
-
-This confirmed that a database failure in one scheduled job does not terminate or disrupt the other scheduled jobs.
-
-### Reservation Transaction Rollback Test
-
-A fresh expired reservation for order `9003` was created.
-
-The `products` table was then temporarily made unavailable so the product update inside the reservation-expiry transaction would fail.
-
-The scheduler logged the product update error and marked the `expire_reservations` job as failed.
-
-A direct PostgreSQL query confirmed that reservation `9003` remained in `active` status.
-
-This verified that the earlier reservation status update was rolled back when the corresponding product update failed.
-
-Other scheduled jobs continued running successfully during this failure.
-
-### Reservation Recovery Test
-
-After restoring the `products` table, the scheduler was restarted.
-
-Reservation `9003` was then processed successfully.
-
-PostgreSQL confirmed:
-
-- the reservation status changed to `expired`;
-- the product reserved quantity was reduced to `2`.
-
-This confirmed that a failed reservation remained available for processing after the database dependency recovered.
-
-### Abandoned Order Update Failure Test
-
-Order `1003` was created as an abandoned `pending` order.
-
-A temporary PostgreSQL trigger was used to force updates to that order to fail.
-
-The scheduler logged the simulated update error and marked the `abandoned_carts` job as failed.
-
-A direct PostgreSQL query confirmed that order `1003` remained `pending`.
-
-The scheduler therefore did not falsely persist or report the failed cancellation as successful.
-
-The other scheduled jobs continued to complete normally.
-
-### Post-Failure Health Test
-
-After the scheduled-job failure tests, `/healthz` still responded successfully.
-
-This confirmed that individual job failures did not terminate the scheduler or break its PostgreSQL health check.
+These tests verify safe database failure handling, job isolation and recovery, reservation transaction handling, and abandoned-order processing.
 
 ## Future Improvements
 
