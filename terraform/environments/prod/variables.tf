@@ -137,3 +137,16 @@ variable "tags" {
     Team        = "Bravo"
   }
 }
+
+# Karpenter
+variable "karpenter_namespace" {
+  description = "Namespace containing the Karpenter controller"
+  type        = string
+  default     = "karpenter"
+}
+
+variable "karpenter_service_account_name" {
+  description = "ServiceAccount used by the Karpenter controller"
+  type        = string
+  default     = "karpenter"
+}

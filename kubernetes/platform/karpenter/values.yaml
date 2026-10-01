@@ -1,1 +1,23 @@
-# Placeholder - implementation will be added by the relevant Kubernetes ticket.
+settings:
+  clusterName: bravo-eks-prod
+
+serviceAccount:
+  create: true
+  name: karpenter
+  annotations:
+    eks.amazonaws.com/role-arn: REPLACE_WITH_KARPENTER_CONTROLLER_ROLE_ARN_WHEN_WERE_LIVE
+
+replicas: 2
+
+nodeSelector:
+  kubernetes.io/os: linux
+  workload: system
+
+controller:
+  resources:
+    requests:
+      cpu: 1
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 1Gi
