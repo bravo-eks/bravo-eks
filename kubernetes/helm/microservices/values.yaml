@@ -1,23 +1,6 @@
 replicaCount: 1
 
-image:
-  repository: ""
-  tag: ""
-  pullPolicy: IfNotPresent
-
-service:
-  type: ClusterIP
-  portName: http
-  port: 80
-  targetPort: 8080
-
-ports:
-  - name: http
-    containerPort: 8080
-    protocol: TCP
-
 strategy:
-  type: RollingUpdate
   rollingUpdate:
     maxUnavailable: 25%
     maxSurge: 25%
@@ -28,21 +11,36 @@ serviceAccount:
   create: false
   name: ""
 
+image:
+  repository: ""
+  tag: ""
+
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8080
+
 httpRoute:
   enabled: false
-  data: {}
 
-externalSecret:
-  enabled: false
-  secretStoreRef:
-    name: ""
-    kind: ClusterSecretStore
-  data: []
+  parentRefs:
+    - name: bravo-gateway
+      namespace: traefik
 
-hpa:
+  hostnames: []
+
+  path:
+    type: PathPrefix
+    value: /
+
+autoscaling:
   enabled: false
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 5
+
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: null
 
@@ -53,29 +51,13 @@ hpa:
         - type: Percent
           value: 100
           periodSeconds: 60
-
     scaleDown:
       stabilizationWindowSeconds: 300
       policies:
         - type: Percent
           value: 50
           periodSeconds: 60
-
 pdb:
   enabled: false
   minAvailable: 1
-
-ingress:
-  enabled: false
-  className: traefik
-  annotations: {}
-  hosts: []
-  tls: []
-
-networkPolicy:
-  enabled: false
-  ingressFrom: []
-  egressTo: []
-  allowPostgres: false
-  allowRedis: false
-  allowExternalHTTPS: false
+  maxUnavailable: null
