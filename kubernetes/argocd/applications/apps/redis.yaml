@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: redis
+  namespace: argocd
+
+spec:
+  project: bravo-redis
+
+  source:
+    repoURL: https://github.com/bravo-eks/bravo-eks.git
+    targetRevision: main
+    path: kubernetes/helm/redis
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: redis
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

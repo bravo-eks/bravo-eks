@@ -1,0 +1,99 @@
+deployment:
+  replicas: 2
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: traefik
+
+providers:
+  kubernetesCRD:
+    enabled: false
+
+  kubernetesIngress:
+    enabled: false
+
+  kubernetesGateway:
+    enabled: true
+
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+    expose:
+      default: true
+    protocol: TCP
+
+  websecure:
+    port: 8443
+    exposedPort: 443
+    expose:
+      default: true
+    protocol: TCP
+
+gateway:
+  enabled: true
+  name: bravo-gateway
+
+  listeners:
+    web:
+      port: 8000
+      protocol: HTTP
+      namespacePolicy:
+        from: All
+
+    websecure:
+      port: 8443
+      protocol: HTTPS
+      namespacePolicy:
+        from: All
+      certificateRefs:
+        - kind: Secret
+          name: bravo-tls
+      mode: Terminate
+
+service:
+  enabled: true
+  type: LoadBalancer
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+readinessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 2
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 2
+
+livenessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 2
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 2
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+log:
+  level: INFO
+
+accessLog:
+  enabled: true
+
+metrics:
+  prometheus:
+    enabled: true

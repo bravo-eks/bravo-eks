@@ -22,7 +22,6 @@ services/worker/worker
 .terraform/
 *.tfstate
 *.tfstate.backup
-*.tfvars
 .terraform.lock.hcl
 
 # Kubernetes
@@ -43,3 +42,4 @@ Thumbs.db
 .env
 .env.*
 *.pem
+!.env.example
