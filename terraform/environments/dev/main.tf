@@ -50,6 +50,7 @@ module "eks" {
   source = "../../modules/eks"
 
   cluster_name               = local.name_prefix
+  cluster_version            = var.cluster_version
   vpc_id                     = module.vpc.vpc_id
   private_subnet_ids         = module.vpc.private_subnet_ids
   environment                = var.environment
@@ -80,7 +81,7 @@ module "rds" {
   backup_retention_period = 1
 }
 
-# Workload IAM
+# IAM
 module "iam" {
   source = "../../modules/iam"
 

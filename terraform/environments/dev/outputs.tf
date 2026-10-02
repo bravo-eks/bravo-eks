@@ -42,3 +42,53 @@ output "ecr_repository_arns" {
   description = "ARNs of the dev ECR repositories."
   value       = module.ecr.repository_arns
 }
+
+# EKS / Kubernetes
+
+output "eks_cluster_ca_certificate" {
+  description = "CA certificate for the dev EKS cluster."
+  value       = module.eks.cluster_ca_certificate
+  sensitive   = true
+}
+
+output "eks_oidc_issuer_url" {
+  description = "OIDC issuer URL for the dev EKS cluster."
+  value       = module.eks.cluster_oidc_issuer_url
+}
+
+output "eks_node_role_arn" {
+  description = "IAM role ARN used by dev EKS worker nodes."
+  value       = module.eks.node_role_arn
+}
+
+output "eks_node_role_name" {
+  description = "IAM role name used by dev EKS worker nodes."
+  value       = module.eks.node_role_name
+}
+
+# IAM
+
+output "order_service_role_arn" {
+  description = "IAM role ARN for the dev order-service."
+  value       = module.iam.order_service_role_arn
+}
+
+output "payment_service_role_arn" {
+  description = "IAM role ARN for the dev payment-service."
+  value       = module.iam.payment_service_role_arn
+}
+
+output "shipping_service_role_arn" {
+  description = "IAM role ARN for the dev shipping-service."
+  value       = module.iam.shipping_service_role_arn
+}
+
+output "worker_role_arn" {
+  description = "IAM role ARN for the dev worker."
+  value       = module.iam.worker_role_arn
+}
+
+output "karpenter_controller_role_arn" {
+  description = "IAM role ARN for the dev Karpenter controller."
+  value       = module.iam.karpenter_controller_role_arn
+}

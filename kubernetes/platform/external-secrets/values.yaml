@@ -1,1 +1,15 @@
-# Placeholder - implementation will be added by the relevant Kubernetes ticket.
+installCRDs: true
+
+serviceAccount:
+  create: true
+  name: external-secrets
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/bravo-prod-external-secrets"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
