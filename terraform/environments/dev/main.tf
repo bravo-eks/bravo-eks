@@ -80,13 +80,18 @@ module "rds" {
   backup_retention_period = 1
 }
 
-# Workload IAM
+# IAM
 module "iam" {
   source = "../../modules/iam"
 
-  name_prefix           = local.name_prefix
-  tags                  = local.tags
+  name_prefix = local.name_prefix
+  tags        = local.tags
+
   eks_oidc_provider_arn = module.eks.eks_oidc_provider_arn
   eks_oidc_provider_url = module.eks.eks_oidc_provider_url
-  sqs_queue_arns        = [module.sqs.queue_arn]
+
+  cluster_name            = module.eks.cluster_name
+  karpenter_node_role_arn = module.eks.node_role_arn
+
+  sqs_queue_arns = [module.sqs.queue_arn]
 }
