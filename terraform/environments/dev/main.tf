@@ -80,7 +80,7 @@ module "rds" {
   backup_retention_period = 1
 }
 
-# Workload IAM
+# IAM
 module "iam" {
   source = "../../modules/iam"
 
@@ -92,12 +92,6 @@ module "iam" {
 
   cluster_name            = module.eks.cluster_name
   karpenter_node_role_arn = module.eks.node_role_arn
-
-  kubernetes_namespace          = var.kubernetes_namespace
-  order_service_account_name    = var.order_service_account_name
-  payment_service_account_name  = var.payment_service_account_name
-  shipping_service_account_name = var.shipping_service_account_name
-  worker_service_account_name   = var.worker_service_account_name
 
   sqs_queue_arns = [module.sqs.queue_arn]
 }
