@@ -1,12 +1,19 @@
 name: Build, Scan and Push Images
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "services/**"
+      - ".github/workflows/build.yaml"
+
   push:
     branches:
       - main
     paths:
       - "services/**"
-      - ".github/workflows/build.yml"
+      - ".github/workflows/build.yaml"
 
   workflow_dispatch:
 
@@ -18,8 +25,58 @@ env:
   AWS_REGION: eu-west-2
 
 jobs:
-  build-scan-push:
-    name: Build, Scan and Push - ${{ matrix.service }}
+
+  # Pr build and scan only
+  build-scan-pr:
+    name: PR Build and Scan - ${{ matrix.service }}
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - dashboard-api
+          - inventory-service
+          - notification-service
+          - order-service
+          - payment-service
+          - scheduler
+          - shipping-service
+          - worker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v5
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/${{ matrix.service }}
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ matrix.service }}:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  # Main build, scan and push to ecr
+  build-scan-push-main:
+    name: Main Build, Scan and Push - ${{ matrix.service }}
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: production
 
@@ -52,10 +109,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker Image
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v5
 
-      # Build image locally first - do NOT push yet
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
@@ -68,7 +124,6 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-      # Trivy
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@0.33.1
         with:
