@@ -63,3 +63,34 @@ variable "database_instance_class" {
   type        = string
   default     = "db.t4g.micro"
 }
+
+# k8s IAM
+variable "kubernetes_namespace" {
+  description = "Kubernetes namespace containing the dev application workloads."
+  type        = string
+  default     = "microservices"
+}
+
+variable "order_service_account_name" {
+  description = "ServiceAccount name for order-service."
+  type        = string
+  default     = "order-service"
+}
+
+variable "payment_service_account_name" {
+  description = "ServiceAccount name for payment-service."
+  type        = string
+  default     = "payment-service"
+}
+
+variable "shipping_service_account_name" {
+  description = "ServiceAccount name for shipping-service."
+  type        = string
+  default     = "shipping-service"
+}
+
+variable "worker_service_account_name" {
+  description = "ServiceAccount name for worker."
+  type        = string
+  default     = "worker"
+}
