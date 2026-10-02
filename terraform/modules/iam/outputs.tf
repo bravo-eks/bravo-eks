@@ -79,3 +79,14 @@ output "external_dns_role_arn" {
   description = "ARN of the IAM role used by ExternalDNS."
   value       = aws_iam_role.external_dns.arn
 }
+
+# Karpenter
+output "karpenter_controller_role_arn" {
+  description = "ARN of the IAM role assumed by the Karpenter controller."
+  value       = aws_iam_role.karpenter_controller.arn
+}
+
+output "karpenter_controller_role_name" {
+  description = "Name of the Karpenter controller IAM role."
+  value       = aws_iam_role.karpenter_controller.name
+}

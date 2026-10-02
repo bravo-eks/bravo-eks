@@ -81,11 +81,6 @@ variable "sqs_queue_arns" {
     error_message = "At least one SQS queue ARN must be supplied."
   }
 }
-<<<<<<< Updated upstream
-
-variable "external_secrets_namespace" {
-  description = "Kubernetes namespace used by External Secrets Operator."
-=======
 # Karpenter
 
 variable "cluster_name" {
@@ -119,7 +114,6 @@ variable "external_dns_service_account_name" {
 
 variable "cluster_name" {
   description = "Name of the EKS cluster."
->>>>>>> Stashed changes
   type        = string
   default     = "external-secrets"
 }
