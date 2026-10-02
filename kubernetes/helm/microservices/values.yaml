@@ -1,6 +1,23 @@
 replicaCount: 1
 
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8080
+
+ports:
+  - name: http
+    containerPort: 8080
+    protocol: TCP
+
 strategy:
+  type: RollingUpdate
   rollingUpdate:
     maxUnavailable: 25%
     maxSurge: 25%
@@ -11,17 +28,38 @@ serviceAccount:
   create: false
   name: ""
 
-image:
-  repository: ""
-  tag: ""
+httpRoute:
+  enabled: false
+  data: {}
 
-  pullPolicy: IfNotPresent
+externalSecret:
+  enabled: false
+  secretStoreRef:
+    name: ""
+    kind: ClusterSecretStore
+  data: []
 
-service:
-  type: ClusterIP
-  portName: http
-  port: 80
-  targetPort: 8080
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: null
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
 
 pdb:
   enabled: false
@@ -41,3 +79,18 @@ externalSecret:
     name: ""
 
   data: []
+
+ingress:
+  enabled: false
+  className: traefik
+  annotations: {}
+  hosts: []
+  tls: []
+
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+  egressTo: []
+  allowPostgres: false
+  allowRedis: false
+  allowExternalHTTPS: false

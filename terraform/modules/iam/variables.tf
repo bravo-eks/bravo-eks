@@ -81,3 +81,28 @@ variable "sqs_queue_arns" {
     error_message = "At least one SQS queue ARN must be supplied."
   }
 }
+
+# Karpenter
+# Karpenter
+
+variable "cluster_name" {
+  description = "Name of the EKS cluster."
+  type        = string
+}
+
+variable "karpenter_namespace" {
+  description = "Kubernetes namespace containing the Karpenter controller."
+  type        = string
+  default     = "karpenter"
+}
+
+variable "karpenter_service_account_name" {
+  description = "Kubernetes ServiceAccount used by the Karpenter controller."
+  type        = string
+  default     = "karpenter"
+}
+
+variable "karpenter_node_role_arn" {
+  description = "IAM role ARN used by EC2 worker nodes provisioned by Karpenter."
+  type        = string
+}

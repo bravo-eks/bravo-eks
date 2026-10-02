@@ -14,10 +14,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
+var sqsClient *sqs.Client
+var sqsQueueURL string
 
 func main() {
 	dbURL := os.Getenv("DATABASE_URL")
@@ -25,7 +29,17 @@ func main() {
 		log.Fatal("DATABASE_URL is required")
 	}
 
-	var err error
+	sqsQueueURL = os.Getenv("SQS_QUEUE_URL")
+	if sqsQueueURL == "" {
+		log.Fatal("SQS_QUEUE_URL is required")
+	}
+
+	awsConfig, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to load AWS configuration: %v", err)
+	}
+	sqsClient = sqs.NewFromConfig(awsConfig)
+
 	db, err = sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -36,7 +50,10 @@ func main() {
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	waitForDB()
-	migrate()
+
+	if getEnv("RUN_MIGRATIONS", "false") == "true" {
+		migrate()
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/livez", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
@@ -138,6 +155,16 @@ func handleCharge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.OrderID <= 0 {
+		httpError(w, "order_id is required", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(req.CustomerID) == "" {
+		httpError(w, "customer_id is required", http.StatusBadRequest)
+		return
+	}
+
 	if req.Amount <= 0 {
 		httpError(w, "amount must be positive", http.StatusBadRequest)
 		return
@@ -155,14 +182,15 @@ func handleCharge(w http.ResponseWriter, r *http.Request) {
 		status = "failed"
 	}
 
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
 		httpError(w, "transaction failed", http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(
+		r.Context(),
 		`INSERT INTO payments (id, order_id, customer_id, amount, currency, status, method)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		paymentID, req.OrderID, req.CustomerID, req.Amount, currency, status, req.Method,
@@ -174,29 +202,48 @@ func handleCharge(w http.ResponseWriter, r *http.Request) {
 
 	if status == "completed" {
 		// Double-entry: debit customer, credit revenue
-		tx.Exec(
+		if _, err := tx.ExecContext(
+			r.Context(),
 			`INSERT INTO ledger_entries (payment_id, entry_type, debit, currency, description)
 			 VALUES ($1, 'charge', $2, $3, $4)`,
 			paymentID, req.Amount, currency, fmt.Sprintf("Order #%d payment", req.OrderID),
-		)
-		tx.Exec(
+		); err != nil {
+			log.Printf("Failed to create charge ledger entry: %v", err)
+			httpError(w, "failed to record payment ledger", http.StatusInternalServerError)
+			return
+		}
+
+		if _, err := tx.ExecContext(
+			r.Context(),
 			`INSERT INTO ledger_entries (payment_id, entry_type, credit, currency, description)
 			 VALUES ($1, 'revenue', $2, $3, $4)`,
 			paymentID, req.Amount, currency, fmt.Sprintf("Order #%d revenue", req.OrderID),
-		)
+		); err != nil {
+			log.Printf("Failed to create revenue ledger entry: %v", err)
+			httpError(w, "failed to record payment ledger", http.StatusInternalServerError)
+			return
+		}
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		log.Printf("Failed to commit payment transaction: %v", err)
+		httpError(w, "failed to process payment", http.StatusInternalServerError)
+		return
+	}
 
 	// Publish event
-	publishEvent("payment."+status, map[string]interface{}{
+	if err := publishEvent(r.Context(), "payment."+status, map[string]interface{}{
 		"payment_id":  paymentID,
 		"order_id":    req.OrderID,
 		"customer_id": req.CustomerID,
 		"amount":      req.Amount,
 		"currency":    currency,
 		"status":      status,
-	})
+	}); err != nil {
+		log.Printf("Failed to publish payment.%s event for payment %s: %v", status, paymentID, err)
+		httpError(w, "payment processed but event publishing failed", http.StatusInternalServerError)
+		return
+	}
 
 	code := http.StatusCreated
 	if status == "failed" {
@@ -230,39 +277,82 @@ func handleRefund(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get original payment
-	var originalAmount float64
-	var orderID int
-	var paymentStatus, customerID, currency string
-	err := db.QueryRow(
-		"SELECT amount, order_id, status, customer_id, currency FROM payments WHERE id = $1",
-		req.PaymentID,
-	).Scan(&originalAmount, &orderID, &paymentStatus, &customerID, &currency)
-	if err != nil {
-		httpError(w, "payment not found", http.StatusNotFound)
+	if strings.TrimSpace(req.PaymentID) == "" {
+		httpError(w, "payment_id is required", http.StatusBadRequest)
 		return
 	}
 
-	if paymentStatus != "completed" {
-		httpError(w, "can only refund completed payments", http.StatusConflict)
+	if req.Amount <= 0 {
+		httpError(w, "refund amount must be positive", http.StatusBadRequest)
 		return
 	}
 
-	refundAmount := req.Amount
-	if refundAmount <= 0 || refundAmount > originalAmount {
-		refundAmount = originalAmount
-	}
-
-	refundID := generatePaymentID()
-
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
 		httpError(w, "transaction failed", http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(
+	// Get and lock original payment
+	var originalAmount float64
+	var orderID int
+	var paymentStatus, customerID, currency string
+	err = tx.QueryRowContext(
+		r.Context(),
+		`SELECT amount, order_id, status, customer_id, currency
+		 FROM payments
+		 WHERE id = $1
+		 FOR UPDATE`,
+		req.PaymentID,
+	).Scan(&originalAmount, &orderID, &paymentStatus, &customerID, &currency)
+
+	if err == sql.ErrNoRows {
+		httpError(w, "payment not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		log.Printf("Failed to retrieve payment for refund: %v", err)
+		httpError(w, "failed to retrieve payment", http.StatusInternalServerError)
+		return
+	}
+
+	if paymentStatus != "completed" && paymentStatus != "partially_refunded" {
+		httpError(w, "can only refund completed or partially refunded payments", http.StatusConflict)
+		return
+	}
+
+	// Calculate how much has already been refunded.
+	var alreadyRefunded float64
+	err = tx.QueryRowContext(
+		r.Context(),
+		`SELECT COALESCE(SUM(amount), 0)
+		 FROM payments
+		 WHERE reference = $1 AND method = 'refund'`,
+		req.PaymentID,
+	).Scan(&alreadyRefunded)
+	if err != nil {
+		log.Printf("Failed to calculate existing refunds: %v", err)
+		httpError(w, "failed to process refund", http.StatusInternalServerError)
+		return
+	}
+
+	remainingRefundable := originalAmount - alreadyRefunded
+	if remainingRefundable <= 0 {
+		httpError(w, "payment has already been fully refunded", http.StatusConflict)
+		return
+	}
+
+	if req.Amount > remainingRefundable {
+		httpError(w, "refund amount exceeds remaining refundable amount", http.StatusBadRequest)
+		return
+	}
+
+	refundAmount := req.Amount
+	refundID := generatePaymentID()
+
+	_, err = tx.ExecContext(
+		r.Context(),
 		`INSERT INTO payments (id, order_id, customer_id, amount, currency, status, method, reference)
 		 VALUES ($1, $2, $3, $4, $5, 'completed', 'refund', $6)`,
 		refundID, orderID, customerID, refundAmount, currency, req.PaymentID,
@@ -272,31 +362,50 @@ func handleRefund(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Reverse ledger entries
-	tx.Exec(
+	// Reverse ledger entry
+	if _, err := tx.ExecContext(
+		r.Context(),
 		`INSERT INTO ledger_entries (payment_id, entry_type, credit, currency, description)
 		 VALUES ($1, 'refund', $2, $3, $4)`,
 		refundID, refundAmount, currency, fmt.Sprintf("Refund for payment %s: %s", req.PaymentID, req.Reason),
-	)
+	); err != nil {
+		log.Printf("Failed to create refund ledger entry: %v", err)
+		httpError(w, "failed to record refund ledger", http.StatusInternalServerError)
+		return
+	}
 
-	if refundAmount >= originalAmount {
-		tx.Exec("UPDATE payments SET status = 'refunded', updated_at = NOW() WHERE id = $1", req.PaymentID)
-	} else {
-		tx.Exec("UPDATE payments SET status = 'partially_refunded', updated_at = NOW() WHERE id = $1", req.PaymentID)
+	newStatus := "partially_refunded"
+	if alreadyRefunded+refundAmount >= originalAmount {
+		newStatus = "refunded"
+	}
+
+	if _, err := tx.ExecContext(
+		r.Context(),
+		"UPDATE payments SET status = $1, updated_at = NOW() WHERE id = $2",
+		newStatus, req.PaymentID,
+	); err != nil {
+		log.Printf("Failed to update original payment status: %v", err)
+		httpError(w, "failed to update payment status", http.StatusInternalServerError)
+		return
 	}
 
 	if err := tx.Commit(); err != nil {
+		log.Printf("Failed to commit refund transaction: %v", err)
 		httpError(w, "refund failed", http.StatusInternalServerError)
 		return
 	}
 
-	publishEvent("payment.refunded", map[string]interface{}{
+	if err := publishEvent(r.Context(), "payment.refunded", map[string]interface{}{
 		"refund_id":  refundID,
 		"payment_id": req.PaymentID,
 		"order_id":   orderID,
 		"amount":     refundAmount,
 		"reason":     req.Reason,
-	})
+	}); err != nil {
+		log.Printf("Failed to publish payment.refunded event for payment %s: %v", req.PaymentID, err)
+		httpError(w, "refund processed but event publishing failed", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -308,11 +417,13 @@ func handleRefund(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLedger(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query(
+	rows, err := db.QueryContext(
+		r.Context(),
 		`SELECT le.id, le.payment_id, le.entry_type, le.debit, le.credit, le.currency, le.description, le.created_at
 		 FROM ledger_entries le ORDER BY le.created_at DESC LIMIT 100`,
 	)
 	if err != nil {
+		log.Printf("Failed to query ledger: %v", err)
 		httpError(w, "query failed", http.StatusInternalServerError)
 		return
 	}
@@ -332,8 +443,29 @@ func handleLedger(w http.ResponseWriter, r *http.Request) {
 	entries := []Entry{}
 	for rows.Next() {
 		var e Entry
-		rows.Scan(&e.ID, &e.PaymentID, &e.EntryType, &e.Debit, &e.Credit, &e.Currency, &e.Description, &e.CreatedAt)
+
+		if err := rows.Scan(
+			&e.ID,
+			&e.PaymentID,
+			&e.EntryType,
+			&e.Debit,
+			&e.Credit,
+			&e.Currency,
+			&e.Description,
+			&e.CreatedAt,
+		); err != nil {
+			log.Printf("Failed to scan ledger entry: %v", err)
+			httpError(w, "failed to read ledger", http.StatusInternalServerError)
+			return
+		}
+
 		entries = append(entries, e)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("Failed while reading ledger entries: %v", err)
+		httpError(w, "failed to read ledger", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -348,15 +480,28 @@ func handleBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var totalCharged, totalRefunded float64
-	db.QueryRow(
+
+	err := db.QueryRowContext(
+		r.Context(),
 		"SELECT COALESCE(SUM(amount), 0) FROM payments WHERE customer_id = $1 AND status IN ('completed', 'partially_refunded', 'refunded') AND (method IS NULL OR method != 'refund')",
 		customerID,
 	).Scan(&totalCharged)
+	if err != nil {
+		log.Printf("Failed to calculate charged balance: %v", err)
+		httpError(w, "failed to calculate balance", http.StatusInternalServerError)
+		return
+	}
 
-	db.QueryRow(
+	err = db.QueryRowContext(
+		r.Context(),
 		"SELECT COALESCE(SUM(amount), 0) FROM payments WHERE customer_id = $1 AND method = 'refund'",
 		customerID,
 	).Scan(&totalRefunded)
+	if err != nil {
+		log.Printf("Failed to calculate refunded balance: %v", err)
+		httpError(w, "failed to calculate balance", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -371,19 +516,30 @@ func generatePaymentID() string {
 	return fmt.Sprintf("pay_%d_%d", time.Now().UnixNano(), rand.Intn(10000))
 }
 
-func publishEvent(eventType string, payload map[string]interface{}) {
-	sqsQueue := os.Getenv("SQS_QUEUE_URL")
-	if sqsQueue == "" {
-		log.Printf("Event (no SQS): %s %v", eventType, payload)
-		return
-	}
+func publishEvent(ctx context.Context, eventType string, payload map[string]interface{}) error {
 	event := map[string]interface{}{
 		"type":      eventType,
 		"payload":   payload,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
-	data, _ := json.Marshal(event)
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("marshal event: %w", err)
+	}
+
+	messageBody := string(data)
+
+	_, err = sqsClient.SendMessage(ctx, &sqs.SendMessageInput{
+		QueueUrl:    &sqsQueueURL,
+		MessageBody: &messageBody,
+	})
+	if err != nil {
+		return fmt.Errorf("send SQS message: %w", err)
+	}
+
 	log.Printf("Event -> SQS: %s", string(data))
+	return nil
 }
 
 func httpError(w http.ResponseWriter, msg string, code int) {

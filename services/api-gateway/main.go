@@ -27,7 +27,11 @@ var (
 )
 
 func main() {
-	jwtSecret = []byte(getEnv("JWT_SECRET", "change-me-in-production"))
+	jwtSecretValue := os.Getenv("JWT_SECRET")
+	if jwtSecretValue == "" {
+		log.Fatal("JWT_SECRET is required")
+	}
+	jwtSecret = []byte(jwtSecretValue)
 
 	// Service routes - internal service URLs
 	routes = map[string]string{
@@ -39,22 +43,31 @@ func main() {
 		"/api/dashboard":     getEnv("DASHBOARD_SERVICE_URL", "http://dashboard-api:8086"),
 	}
 
-	// Redis for rate limiting
-	redisURL := os.Getenv("REDIS_URL")
-	if redisURL != "" {
-		opt, err := redis.ParseURL(redisURL)
-		if err != nil {
-			log.Printf("WARNING: invalid REDIS_URL, rate limiting disabled: %v", err)
-		} else {
-			redisClient = redis.NewClient(opt)
-			if _, err := redisClient.Ping(ctx).Result(); err != nil {
-				log.Printf("WARNING: Redis not reachable, rate limiting disabled: %v", err)
-				redisClient = nil
-			} else {
-				log.Println("Redis connected for rate limiting")
-			}
+	for name, targetURL := range routes {
+		target, err := url.ParseRequestURI(targetURL)
+		if err != nil || target.Scheme == "" || target.Host == "" {
+			log.Fatalf("invalid upstream URL for %s: %q", name, targetURL)
 		}
 	}
+
+	// Redis for rate limiting
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		log.Fatal("REDIS_URL is required")
+	}
+
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		log.Fatalf("invalid REDIS_URL: %v", err)
+	}
+
+	redisClient = redis.NewClient(opt)
+
+	if _, err := redisClient.Ping(ctx).Result(); err != nil {
+		log.Fatalf("Redis not reachable: %v", err)
+	}
+
+	log.Println("Redis connected for rate limiting")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/livez", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
@@ -82,7 +95,25 @@ func main() {
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "api-gateway"})
+
+	if redisClient == nil {
+		httpError(w, "redis unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	healthCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
+	if err := redisClient.Ping(healthCtx).Err(); err != nil {
+		log.Printf("Redis health check failed: %v", err)
+		httpError(w, "redis unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "ok",
+		"service": "api-gateway",
+	})
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -99,14 +130,18 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	if req.Email == "" || req.Password == "" {
+		httpError(w, "email and password required", http.StatusBadRequest)
+		return
+	}
 
 	// In production this would validate against a user database
 	// For this project, accept any email/password and return a JWT
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":   req.Email,
-		"role":  "customer",
-		"exp":   time.Now().Add(24 * time.Hour).Unix(),
-		"iat":   time.Now().Unix(),
+		"sub":  req.Email,
+		"role": "customer",
+		"exp":  time.Now().Add(24 * time.Hour).Unix(),
+		"iat":  time.Now().Unix(),
 	})
 
 	tokenString, err := token.SignedString(jwtSecret)
@@ -169,9 +204,19 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 	if redisClient != nil {
 		ip := clientIP(r)
 		key := fmt.Sprintf("rate:%s", ip)
-		count, _ := redisClient.Incr(ctx, key).Result()
+		count, err := redisClient.Incr(ctx, key).Result()
+		if err != nil {
+			log.Printf("Rate limit check failed: %v", err)
+			httpError(w, "service temporarily unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		if count == 1 {
-			redisClient.Expire(ctx, key, time.Minute)
+			if err := redisClient.Expire(ctx, key, time.Minute).Err(); err != nil {
+				log.Printf("Failed to set rate limit expiry: %v", err)
+				httpError(w, "service temporarily unavailable", http.StatusServiceUnavailable)
+				return
+			}
 		}
 		limit := 100 // requests per minute
 		if count > int64(limit) {
@@ -216,7 +261,6 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "" {
 				r.URL.Path = "/"
 			}
-			r.Header.Set("X-Forwarded-For", r.RemoteAddr)
 			r.Header.Set("X-Request-ID", fmt.Sprintf("%d", time.Now().UnixNano()))
 
 			proxy.ServeHTTP(w, r)
@@ -253,8 +297,8 @@ func validateToken(r *http.Request) (jwt.MapClaims, error) {
 	}
 
 	token, err := jwt.Parse(parts[1], func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
+		if token.Method != jwt.SigningMethodHS256 {
+			return nil, fmt.Errorf("unexpected signing method: %s", token.Header["alg"])
 		}
 		return jwtSecret, nil
 	})
@@ -300,12 +344,21 @@ func gracefulShutdown(server *http.Server) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
+
 	shutdownOnce.Do(func() {
 		log.Println("Shutting down...")
+
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		server.Shutdown(ctx)
+
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("HTTP server shutdown error: %v", err)
+		}
+
+		if redisClient != nil {
+			if err := redisClient.Close(); err != nil {
+				log.Printf("Redis shutdown error: %v", err)
+			}
+		}
 	})
 }
-
-
