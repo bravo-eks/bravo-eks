@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 const (
@@ -221,7 +222,7 @@ func (w *Worker) pollAndProcess(ctx context.Context) error {
 	}
 }
 
-func (w *Worker) receiveMessages(ctx context.Context) ([]sqs.Message, error) {
+func (w *Worker) receiveMessages(ctx context.Context) ([]types.Message, error) {
 	result, err := w.sqsClient.ReceiveMessage(
 		ctx,
 		&sqs.ReceiveMessageInput{
@@ -232,8 +233,8 @@ func (w *Worker) receiveMessages(ctx context.Context) ([]sqs.Message, error) {
 			MessageAttributeNames: []string{
 				"All",
 			},
-			AttributeNames: []types.QueueAttributeName{
-				types.QueueAttributeNameApproximateReceiveCount,
+			MessageSystemAttributeNames: []types.MessageSystemAttributeName{
+				types.MessageSystemAttributeNameApproximateReceiveCount,
 			},
 		},
 	)
@@ -267,7 +268,7 @@ func (w *Worker) deleteMessage(ctx context.Context, receiptHandle string) error 
 
 func (w *Worker) processMessage(
 	ctx context.Context,
-	message sqs.Message,
+	message types.Message,
 ) error {
 	if message.Body == nil {
 		return errors.New("message body is missing")
