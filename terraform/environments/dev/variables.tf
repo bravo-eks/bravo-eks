@@ -68,7 +68,7 @@ variable "database_instance_class" {
 variable "kubernetes_namespace" {
   description = "Kubernetes namespace containing the dev application workloads."
   type        = string
-  default     = "default"
+  default     = "microservices"
 }
 
 variable "order_service_account_name" {
