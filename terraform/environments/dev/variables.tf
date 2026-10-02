@@ -94,3 +94,9 @@ variable "worker_service_account_name" {
   type        = string
   default     = "worker"
 }
+
+variable "cluster_version" {
+  description = "Kubernetes version for the dev EKS cluster."
+  type        = string
+  default     = "1.33"
+}
