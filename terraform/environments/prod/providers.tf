@@ -25,7 +25,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket       = "bravo-eksv2-project-s3"
-    key          = "production/terraform.tfstate"
+    key          = "environments/prod/terraform.tfstate"
     region       = "eu-west-2"
     encrypt      = true
     use_lockfile = true
