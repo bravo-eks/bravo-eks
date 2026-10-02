@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -21,8 +22,8 @@ import (
 )
 
 var (
-	db         *sql.DB
-	sqsClient  *sqs.Client
+	db          *sql.DB
+	sqsClient   *sqs.Client
 	sqsQueueURL string
 )
 
@@ -779,7 +780,7 @@ func decodeJSON(r *http.Request, destination interface{}) error {
 		return err
 	}
 
-	if decoder.Decode(&struct{}{}) != nil {
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
 		return fmt.Errorf("request body must contain a single JSON object")
 	}
 
