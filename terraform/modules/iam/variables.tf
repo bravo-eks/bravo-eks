@@ -81,9 +81,45 @@ variable "sqs_queue_arns" {
     error_message = "At least one SQS queue ARN must be supplied."
   }
 }
+<<<<<<< Updated upstream
 
 variable "external_secrets_namespace" {
   description = "Kubernetes namespace used by External Secrets Operator."
+=======
+# Karpenter
+
+variable "cluster_name" {
+  description = "Name of the EKS cluster."
+  type        = string
+}
+variable "karpenter_namespace" {
+  description = "Kubernetes namespace containing the Karpenter controller."
+  type        = string
+  default     = "karpenter"
+}
+
+variable "external_secrets_secret_arns" {
+  description = "Secrets Manager secret ARNs that External Secrets Operator is allowed to read."
+  type        = list(string)
+}
+
+variable "external_dns_namespace" {
+  description = "Kubernetes namespace used by ExternalDNS."
+  type        = string
+  default     = "external-dns"
+}
+
+variable "external_dns_service_account_name" {
+  description = "Kubernetes ServiceAccount used by ExternalDNS."
+  type        = string
+  default     = "external-dns"
+}
+
+# Karpenter
+
+variable "cluster_name" {
+  description = "Name of the EKS cluster."
+>>>>>>> Stashed changes
   type        = string
   default     = "external-secrets"
 }
