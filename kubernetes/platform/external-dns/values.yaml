@@ -2,7 +2,7 @@ provider:
   name: aws
 
 sources:
-  - ingress
+ - gateway-httproute
 
 domainFilters:
   - "bravoorders.com"
