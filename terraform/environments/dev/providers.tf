@@ -23,3 +23,13 @@ provider "aws" {
     }
   }
 }
+
+terraform {
+  backend "s3" {
+    bucket       = "bravo-eksv2-project-s3"
+    key          = "environments/dev/terraform.tfstate"
+    region       = "eu-west-2"
+    encrypt      = true
+    use_lockfile = true
+  }
+}
