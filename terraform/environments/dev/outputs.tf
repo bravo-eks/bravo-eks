@@ -92,3 +92,17 @@ output "karpenter_controller_role_arn" {
   description = "IAM role ARN for the dev Karpenter controller."
   value       = module.iam.karpenter_controller_role_arn
 }
+
+# External Secrets Operator
+
+output "external_secrets_role_arn" {
+  description = "ARN of the IAM role used by External Secrets Operator in development."
+  value       = module.iam.external_secrets_role_arn
+}
+
+# ExternalDNS
+
+output "external_dns_role_arn" {
+  description = "ARN of the IAM role used by ExternalDNS in development."
+  value       = module.iam.external_dns_role_arn
+}
