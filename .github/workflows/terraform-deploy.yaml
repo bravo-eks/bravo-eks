@@ -68,8 +68,6 @@ jobs:
     name: Terraform ${{ inputs.environment }} Apply
     runs-on: ubuntu-latest
     needs: terraform-plan
-    environment:
-      name: ${{ inputs.environment == 'prod' && 'production' || 'development' }}
     concurrency:
       group: terraform-${{ inputs.environment }}
       cancel-in-progress: false
