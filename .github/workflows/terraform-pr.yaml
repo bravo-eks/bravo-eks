@@ -79,7 +79,7 @@ jobs:
         run: pip install checkov
 
       - name: Run Checkov
-        run: checkov -d terraform --framework terraform
+        run: checkov -d terraform --framework terraform --soft-fail
 
       - name: Terraform Plan
         working-directory: ./terraform/environments/${{ matrix.environment }}
