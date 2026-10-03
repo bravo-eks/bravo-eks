@@ -94,3 +94,8 @@ variable "worker_service_account_name" {
   type        = string
   default     = "worker"
 }
+
+variable "external_secrets_secret_arns" {
+  description = "Secrets Manager secret ARNs that External Secrets Operator can read in the development environment."
+  type        = list(string)
+}

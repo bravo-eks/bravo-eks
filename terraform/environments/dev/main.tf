@@ -101,4 +101,6 @@ module "iam" {
   worker_service_account_name   = var.worker_service_account_name
 
   sqs_queue_arns = [module.sqs.queue_arn]
+
+  external_secrets_secret_arns = var.external_secrets_secret_arns
 }
