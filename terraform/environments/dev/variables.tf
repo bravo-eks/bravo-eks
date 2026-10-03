@@ -95,6 +95,11 @@ variable "worker_service_account_name" {
   default     = "worker"
 }
 
+variable "external_secrets_secret_arns" {
+  description = "Secrets Manager secret ARNs that External Secrets Operator can read in the development environment."
+  type        = list(string)
+}
+
 variable "cluster_version" {
   description = "Kubernetes version for the dev EKS cluster."
   type        = string
