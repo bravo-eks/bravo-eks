@@ -428,7 +428,73 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
         ]
 
         Resource = "*"
-      }
+      },
+
+      # ECR
+
+      {
+        Sid    = "ECRManage"
+        Effect = "Allow"
+
+        Action = [
+          "ecr:CreateRepository",
+          "ecr:DeleteRepository",
+          "ecr:DescribeRepositories",
+          "ecr:ListTagsForResource",
+          "ecr:TagResource",
+          "ecr:UntagResource",
+          "ecr:PutLifecyclePolicy",
+          "ecr:GetLifecyclePolicy",
+          "ecr:DeleteLifecyclePolicy"
+        ]
+
+        Resource = "*"
+      },
+
+      # KMS
+
+      {
+        Sid    = "KMSManage"
+        Effect = "Allow"
+
+        Action = [
+          "kms:CreateKey",
+          "kms:DescribeKey",
+          "kms:EnableKeyRotation",
+          "kms:GetKeyRotationStatus",
+          "kms:CreateAlias",
+          "kms:DeleteAlias",
+          "kms:UpdateAlias",
+          "kms:ListAliases",
+          "kms:TagResource",
+          "kms:UntagResource",
+          "kms:ListResourceTags",
+          "kms:ScheduleKeyDeletion",
+          "kms:CancelKeyDeletion"
+        ]
+
+        Resource = "*"
+      },
+
+      # EKS OIDC
+
+      {
+        Sid    = "OIDCManage"
+        Effect = "Allow"
+
+        Action = [
+          "iam:CreateOpenIDConnectProvider",
+          "iam:GetOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint",
+          "iam:AddClientIDToOpenIDConnectProvider",
+          "iam:RemoveClientIDFromOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:TagOpenIDConnectProvider",
+          "iam:UntagOpenIDConnectProvider"
+        ]
+
+        Resource = "*"
+      },
     ]
   })
 }
