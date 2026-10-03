@@ -39,7 +39,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+      - name: Show OIDC subject
+        shell: bash
+        run: |
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
+            | jq -r '.value')
 
+          PAYLOAD=$(echo "$TOKEN" | cut -d '.' -f2)
+
+          python3 -c "
+          import base64, json
+          p='$PAYLOAD'
+          p += '=' * (-len(p) % 4)
+          print(json.loads(base64.urlsafe_b64decode(p))['sub'])
+          "
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
