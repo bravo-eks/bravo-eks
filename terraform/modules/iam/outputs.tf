@@ -59,17 +59,6 @@ output "worker_role_name" {
 }
 
 # Policies
-
-output "sqs_producer_policy_arn" {
-  description = "ARN of the SQS producer policy."
-  value       = aws_iam_policy.sqs_producer.arn
-}
-
-output "worker_sqs_policy_arn" {
-  description = "ARN of the worker SQS consumer policy."
-  value       = aws_iam_policy.worker_sqs.arn
-}
-
 output "external_secrets_role_arn" {
   description = "ARN of the IAM role used by External Secrets Operator."
   value       = aws_iam_role.external_secrets.arn
