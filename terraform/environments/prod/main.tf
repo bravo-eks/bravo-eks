@@ -56,7 +56,8 @@ module "iam" {
     module.sqs.queue_arn
   ]
 
-  tags = var.tags
+  external_secrets_secret_arns = [module.rds.master_user_secret_arn]
+  tags                         = var.tags
 }
 
 # RDS
