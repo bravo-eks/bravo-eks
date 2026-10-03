@@ -51,6 +51,7 @@ resource "aws_iam_role" "order_service" {
   )
 }
 
+
 # Payment Service - IRSA Trust Policy
 
 data "aws_iam_policy_document" "payment_service_assume_role" {
@@ -103,6 +104,7 @@ resource "aws_iam_role" "payment_service" {
     }
   )
 }
+
 
 # Shipping Service - IRSA Trust Policy
 
@@ -157,6 +159,7 @@ resource "aws_iam_role" "shipping_service" {
   )
 }
 
+
 # Worker - IRSA Trust Policy
 
 data "aws_iam_policy_document" "worker_assume_role" {
@@ -210,6 +213,114 @@ resource "aws_iam_role" "worker" {
   )
 }
 
+
+# ExternalDNS - IRSA Trust Policy
+
+data "aws_iam_policy_document" "external_dns_assume_role" {
+  statement {
+    sid    = "AllowExternalDNSServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.external_dns_namespace}:${var.external_dns_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "external_dns" {
+  name               = "${var.name_prefix}-external-dns"
+  description        = "IAM role assumed by ExternalDNS using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.external_dns_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-external-dns"
+      Component = "external-dns"
+    }
+  )
+}
+
+
+# ExternalDNS - Route53 Policy
+
+data "aws_iam_policy_document" "external_dns_route53" {
+
+  statement {
+    sid    = "ManageBravoOrdersDNSRecords"
+    effect = "Allow"
+
+    actions = [
+      "route53:ChangeResourceRecordSets",
+      "route53:ListResourceRecordSets",
+      "route53:ListTagsForResources"
+    ]
+
+    resources = [
+      "arn:aws:route53:::hostedzone/Z094258811V8WSH58ZFW5"
+    ]
+  }
+
+  statement {
+    sid    = "ListHostedZones"
+    effect = "Allow"
+
+    actions = [
+      "route53:ListHostedZones"
+    ]
+
+    resources = [
+      "*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "external_dns_route53" {
+  name        = "${var.name_prefix}-external-dns-route53"
+  description = "Allows ExternalDNS to manage Route53 records for bravoorders.com."
+  policy      = data.aws_iam_policy_document.external_dns_route53.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-external-dns-route53"
+      Component = "external-dns"
+    }
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "external_dns_route53" {
+  role       = aws_iam_role.external_dns.name
+  policy_arn = aws_iam_policy.external_dns_route53.arn
+}
+
+
 # SQS Producer Policy
 
 data "aws_iam_policy_document" "sqs_producer" {
@@ -238,6 +349,7 @@ resource "aws_iam_policy" "sqs_producer" {
   )
 }
 
+
 # Attach producer policy to each producer role
 
 resource "aws_iam_role_policy_attachment" "order_service_sqs" {
@@ -254,6 +366,7 @@ resource "aws_iam_role_policy_attachment" "shipping_service_sqs" {
   role       = aws_iam_role.shipping_service.name
   policy_arn = aws_iam_policy.sqs_producer.arn
 }
+
 
 # Worker SQS Consumer Policy
 
@@ -291,4 +404,92 @@ resource "aws_iam_policy" "worker_sqs" {
 resource "aws_iam_role_policy_attachment" "worker_sqs" {
   role       = aws_iam_role.worker.name
   policy_arn = aws_iam_policy.worker_sqs.arn
+}
+
+# External Secrets Operator - IRSA Trust Policy
+
+data "aws_iam_policy_document" "external_secrets_assume_role" {
+  statement {
+    sid    = "AllowExternalSecretsServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.external_secrets_namespace}:${var.external_secrets_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "external_secrets" {
+  name               = "${var.name_prefix}-external-secrets"
+  description        = "IAM role assumed by External Secrets Operator using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.external_secrets_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-external-secrets"
+      Component = "external-secrets"
+    }
+  )
+}
+
+# External Secrets Operator - Secrets Manager Policy
+
+data "aws_iam_policy_document" "external_secrets" {
+  statement {
+    sid    = "ReadSecrets"
+    effect = "Allow"
+
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret"
+    ]
+
+    resources = var.external_secrets_secret_arns
+  }
+}
+
+resource "aws_iam_policy" "external_secrets" {
+  name        = "${var.name_prefix}-external-secrets"
+  description = "Allows External Secrets Operator to read approved AWS Secrets Manager secrets."
+  policy      = data.aws_iam_policy_document.external_secrets.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-external-secrets"
+      Component = "external-secrets"
+    }
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "external_secrets" {
+  role       = aws_iam_role.external_secrets.name
+  policy_arn = aws_iam_policy.external_secrets.arn
 }

@@ -58,6 +58,28 @@ output "worker_role_name" {
   value       = aws_iam_role.worker.name
 }
 
+# Policies
+
+output "sqs_producer_policy_arn" {
+  description = "ARN of the SQS producer policy."
+  value       = aws_iam_policy.sqs_producer.arn
+}
+
+output "worker_sqs_policy_arn" {
+  description = "ARN of the worker SQS consumer policy."
+  value       = aws_iam_policy.worker_sqs.arn
+}
+
+output "external_secrets_role_arn" {
+  description = "ARN of the IAM role used by External Secrets Operator."
+  value       = aws_iam_role.external_secrets.arn
+}
+
+output "external_dns_role_arn" {
+  description = "ARN of the IAM role used by ExternalDNS."
+  value       = aws_iam_role.external_dns.arn
+}
+
 # Karpenter
 output "karpenter_controller_role_arn" {
   description = "ARN of the IAM role assumed by the Karpenter controller."
