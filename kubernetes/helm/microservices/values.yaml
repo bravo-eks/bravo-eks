@@ -33,7 +33,21 @@ httpRoute:
   enabled: false
   data: {}
 
-hpa:
+externalSecret:
+  enabled: false
+  refreshInterval: 1h
+
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+
+  target:
+    name: ""
+    template: {}
+
+  data: []
+
+autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 3
@@ -60,21 +74,6 @@ pdb:
   minAvailable: 1
   maxUnavailable: null
 
-externalSecret:
-  enabled: false
-
-  refreshInterval: 1h
-
-  secretStoreRef:
-    name: aws-secrets-manager
-    kind: ClusterSecretStore
-
-  target:
-    name: ""
-    template: {}
-
-  data: []
-
 ingress:
   enabled: false
   className: traefik
@@ -84,11 +83,6 @@ ingress:
 
 networkPolicy:
   enabled: false
-  ingressFrom: []
-  egressTo: []
-  allowPostgres: false
-  allowRedis: false
-  allowExternalHTTPS: false
 
   dns:
     enabled: true
@@ -96,6 +90,13 @@ networkPolicy:
       kubernetes.io/metadata.name: kube-system
     podSelector:
       k8s-app: kube-dns
+
+  ingressFrom: []
+  egressTo: []
+
+  allowPostgres: false
+  allowRedis: false
+  allowExternalHTTPS: false
 
   postgres:
     port: 5432

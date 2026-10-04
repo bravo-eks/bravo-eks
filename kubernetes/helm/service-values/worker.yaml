@@ -71,7 +71,7 @@ serviceAccount:
 externalSecret:
   enabled: false
 
-hpa:
+autoscaling:
   enabled: false
 
 pdb:
