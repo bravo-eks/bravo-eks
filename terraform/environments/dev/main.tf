@@ -15,7 +15,7 @@ module "sqs" {
   queue_name = "${local.name_prefix}-events"
 }
 
-# VPC
+## VPC
 module "vpc" {
   source = "../../modules/vpc"
 
@@ -23,7 +23,7 @@ module "vpc" {
   enable_nat_gateway = var.enable_nat_gateway
 }
 
-# EKS
+## EKS
 module "eks" {
   source = "../../modules/eks"
 
