@@ -6,28 +6,6 @@ locals {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
-
-  services = [
-    "api-gateway",
-    "order-service",
-    "inventory-service",
-    "payment-service",
-    "notification-service",
-    "shipping-service",
-    "worker",
-    "scheduler",
-    "dashboard-api"
-  ]
-}
-
-# ECR repositories
-module "ecr" {
-  source = "../../modules/ecr"
-
-  ecr_repositories = [
-    for service in local.services :
-    "${local.name_prefix}-${service}"
-  ]
 }
 
 # SQS
