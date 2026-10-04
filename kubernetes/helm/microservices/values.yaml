@@ -35,9 +35,16 @@ httpRoute:
 
 externalSecret:
   enabled: false
+  refreshInterval: 1h
+
   secretStoreRef:
-    name: ""
+    name: aws-secrets-manager
     kind: ClusterSecretStore
+
+  target:
+    name: ""
+    template: {}
+
   data: []
 
 autoscaling:
