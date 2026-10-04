@@ -39,7 +39,7 @@ module "eks" {
   tags                       = local.tags
 }
 
-# RDS PostgreSQL
+## RDS PostgreSQL
 module "rds" {
   source = "../../modules/rds"
 
@@ -59,7 +59,7 @@ module "rds" {
   backup_retention_period = 1
 }
 
-# IAM
+## IAM
 module "iam" {
   source = "../../modules/iam"
 

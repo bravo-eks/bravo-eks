@@ -191,7 +191,10 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
         Effect = "Allow"
 
         Action = [
-          "secretsmanager:DescribeSecret"
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetResourcePolicy",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:ListSecretVersionIds"
         ]
 
         Resource = "*"
@@ -202,7 +205,9 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
 
         Action = [
           "kms:DescribeKey",
+          "kms:GetKeyPolicy",
           "kms:GetKeyRotationStatus",
+          "kms:ListAliases",
           "kms:ListResourceTags"
         ]
 
