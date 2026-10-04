@@ -25,25 +25,25 @@ variable "enable_nat_gateway" {
 variable "system_node_instance_types" {
   description = "EC2 instance types for the dev EKS system node group."
   type        = list(string)
-  default     = ["t3.small"]
+  default     = ["t3.medium"]
 }
 
 variable "system_node_desired_size" {
   description = "Desired number of dev EKS system nodes."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "system_node_min_size" {
   description = "Minimum number of dev EKS system nodes."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "system_node_max_size" {
   description = "Maximum number of dev EKS system nodes."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "database_name" {
