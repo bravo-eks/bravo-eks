@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: "304960797322.dkr.ecr.eu-west-2.amazonaws.com/dashboard-api"
-  tag: "2114c490647781ecacbfd0444ad4a4cebad6c321"
+  tag: "c8bee0f69e2127105e54a6a921b8a35367aa32d8"
   pullPolicy: IfNotPresent
 
 ports:
