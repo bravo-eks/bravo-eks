@@ -15,7 +15,7 @@ module "sqs" {
   queue_name = "${local.name_prefix}-events"
 }
 
-# VPC
+## VPC
 module "vpc" {
   source = "../../modules/vpc"
 
@@ -23,7 +23,7 @@ module "vpc" {
   enable_nat_gateway = var.enable_nat_gateway
 }
 
-# EKS
+## EKS
 module "eks" {
   source = "../../modules/eks"
 
@@ -39,7 +39,7 @@ module "eks" {
   tags                       = local.tags
 }
 
-# RDS PostgreSQL
+## RDS PostgreSQL
 module "rds" {
   source = "../../modules/rds"
 
@@ -59,7 +59,7 @@ module "rds" {
   backup_retention_period = 1
 }
 
-# IAM
+## IAM
 module "iam" {
   source = "../../modules/iam"
 
