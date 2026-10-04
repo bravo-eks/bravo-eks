@@ -106,3 +106,7 @@ output "external_dns_role_arn" {
   description = "ARN of the IAM role used by ExternalDNS in development."
   value       = module.iam.external_dns_role_arn
 }
+output "runtime_secret_arn" {
+  description = "ARN of the dev runtime application secret."
+  value       = aws_secretsmanager_secret.runtime.arn
+}
