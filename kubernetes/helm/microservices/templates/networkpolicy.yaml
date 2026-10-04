@@ -57,12 +57,10 @@ spec:
   ingress:
     {{- range .Values.networkPolicy.ingressFrom }}
     - from:
-        - {{- if .namespace }}
-          namespaceSelector:
+        - {{ if .namespace }}namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .namespace }}
-          {{- end }}
-          podSelector:
+          {{ end }}podSelector:
             matchLabels:
               {{- if .podLabels }}
               {{- toYaml .podLabels | nindent 14 }}
