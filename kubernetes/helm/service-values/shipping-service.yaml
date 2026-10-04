@@ -49,7 +49,7 @@ env:
 
 envFrom:
   - secretRef:
-      name: shipping-service-bravo-app
+      name: shipping-service-database
 
 configMap:
   enabled: false
@@ -62,18 +62,18 @@ serviceAccount:
 
 externalSecret:
   enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
   target:
-    template:
-      engineVersion: v2
-      data:
-        DATABASE_URL: 'postgres://bravoadmin:{{ .dbPassword | urlquery }}@bravo-dev-postgres.c54ie6i6yszp.eu-west-2.rds.amazonaws.com:5432/bravodev?sslmode=require'
+    name: shipping-service-database
   data:
-    - secretKey: dbPassword
+    - secretKey: DATABASE_URL
       remoteRef:
-        key: rds!db-3934bf46-bfb6-4352-983d-0260f319a9c4
-        property: password
+        key: bravo/dev/shipping-service/database
 
-hpa:
+autoscaling:
   enabled: false
 
 pdb:

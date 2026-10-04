@@ -84,7 +84,7 @@ externalSecret:
         key: bravo-dev-runtime
         property: redis_password
 
-hpa:
+autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 5
