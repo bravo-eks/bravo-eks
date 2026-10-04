@@ -1,41 +1,160 @@
 name: Build, Scan and Push Images
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "services/**"
+      - ".github/workflows/build.yaml"
+
   push:
     branches:
       - main
     paths:
       - "services/**"
-      - ".github/workflows/build.yml"
+      - ".github/workflows/build.yaml"
 
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
+  pull-requests: read
 
 env:
   AWS_REGION: eu-west-2
 
 jobs:
-  build-scan-push:
-    name: Build, Scan and Push - ${{ matrix.service }}
+  detect-changes:
+    name: Detect Changed Services
     runs-on: ubuntu-latest
-    environment: production
+
+    outputs:
+      services: ${{ steps.set-services.outputs.services }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            api-gateway:
+              - 'services/api-gateway/**'
+              - '.github/workflows/build.yaml'
+
+            dashboard-api:
+              - 'services/dashboard-api/**'
+              - '.github/workflows/build.yaml'
+
+            inventory-service:
+              - 'services/inventory-service/**'
+              - '.github/workflows/build.yaml'
+
+            notification-service:
+              - 'services/notification-service/**'
+              - '.github/workflows/build.yaml'
+
+            order-service:
+              - 'services/order-service/**'
+              - '.github/workflows/build.yaml'
+
+            payment-service:
+              - 'services/payment-service/**'
+              - '.github/workflows/build.yaml'
+
+            scheduler:
+              - 'services/scheduler/**'
+              - '.github/workflows/build.yaml'
+
+            shipping-service:
+              - 'services/shipping-service/**'
+              - '.github/workflows/build.yaml'
+
+            worker:
+              - 'services/worker/**'
+              - '.github/workflows/build.yaml'
+
+      - name: Set service matrix
+        id: set-services
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CHANGED_SERVICES: ${{ steps.filter.outputs.changes }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo 'services=["api-gateway","dashboard-api","inventory-service","notification-service","order-service","payment-service","scheduler","shipping-service","worker"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "services=$CHANGED_SERVICES" >> "$GITHUB_OUTPUT"
+          fi
+
+  # PR: build and scan only
+  build-scan-pr:
+    name: PR Build and Scan - ${{ matrix.service }}
+    needs: detect-changes
+
+    if: >
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.services != '[]'
+
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        service:
-          - api-gateway
-          - dashboard-api
-          - inventory-service
-          - notification-service
-          - order-service
-          - payment-service
-          - scheduler
-          - shipping-service
-          - worker
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v5
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/${{ matrix.service }}
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ matrix.service }}:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  # Main: build, scan and push changed services to ECR
+  build-scan-push-main:
+    name: Main Build, Scan and Push - ${{ matrix.service }}
+    needs: detect-changes
+
+    if: >
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      needs.detect-changes.outputs.services != '[]'
+
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      id-token: write
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
 
     steps:
       - name: Checkout code
@@ -52,10 +171,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker Image
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v5
 
-      # Build image locally first - do NOT push yet
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
@@ -68,7 +186,6 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-      # Trivy
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@0.33.1
         with:
