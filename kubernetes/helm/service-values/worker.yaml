@@ -41,15 +41,25 @@ readinessProbe:
     path: /healthz
     port: health
 
-env: []
+env:
+  - name: SQS_QUEUE_URL
+    value: "https://sqs.eu-west-2.amazonaws.com/304960797322/bravo-dev-events"
+  - name: AWS_REGION
+    value: "eu-west-2"
 
 envFrom: []
 
 configMap:
   enabled: false
 
+serviceAccount:
+  create: true
+  name: worker
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-worker"
+
 externalSecret:
-  enabled: true
+  enabled: false
 
 hpa:
   enabled: false
