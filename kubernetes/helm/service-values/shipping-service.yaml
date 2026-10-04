@@ -87,6 +87,7 @@ networkPolicy:
   enabled: true
   ingressFrom:
     - service: api-gateway
+    - service: worker
   egressTo: []
   allowPostgres: true
   allowRedis: false
