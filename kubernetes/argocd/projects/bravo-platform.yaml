@@ -1,8 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
+
 metadata:
   name: bravo-platform
   namespace: argocd
+
 spec:
   description: Bravo platform services
 
@@ -34,6 +36,9 @@ spec:
     - namespace: karpenter
       server: https://kubernetes.default.svc
 
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
+
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
@@ -46,7 +51,7 @@ spec:
 
     - group: rbac.authorization.k8s.io
       kind: ClusterRoleBinding
-    
+
     - group: cert-manager.io
       kind: ClusterIssuer
 
@@ -55,8 +60,26 @@ spec:
 
     - group: karpenter.k8s.aws
       kind: EC2NodeClass
+
     - group: gateway.networking.k8s.io
       kind: GatewayClass
+    - group: networking.k8s.io
+      kind: IngressClass
+
+    - group: external-secrets.io
+      kind: ClusterSecretStore
+
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionPolicy
+
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionPolicyBinding
 
   namespaceResourceWhitelist:
     - group: "*"
