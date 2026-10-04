@@ -14,10 +14,9 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "bravo-eks"
-      Environment = "prod"
-      ManagedBy   = "Terraform"
-      Team        = "Bravo"
+      Project   = "bravo-eks"
+      ManagedBy = "Terraform"
+      Team      = "Bravo"
     }
   }
 }

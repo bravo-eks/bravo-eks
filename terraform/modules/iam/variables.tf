@@ -12,6 +12,7 @@ variable "tags" {
   default     = {}
 }
 
+
 # EKS OIDC / IRSA
 
 variable "eks_oidc_provider_arn" {
@@ -38,7 +39,8 @@ variable "eks_oidc_provider_url" {
   }
 }
 
-# Kubernetes
+
+# Kubernetes Workloads
 
 variable "kubernetes_namespace" {
   description = "Kubernetes namespace containing the application workloads."
@@ -70,6 +72,7 @@ variable "worker_service_account_name" {
   default     = "worker"
 }
 
+
 # SQS
 
 variable "sqs_queue_arns" {
@@ -80,4 +83,64 @@ variable "sqs_queue_arns" {
     condition     = length(var.sqs_queue_arns) > 0
     error_message = "At least one SQS queue ARN must be supplied."
   }
+}
+
+
+# Karpenter
+
+variable "cluster_name" {
+  description = "Name of the EKS cluster."
+  type        = string
+}
+
+variable "karpenter_namespace" {
+  description = "Kubernetes namespace containing the Karpenter controller."
+  type        = string
+  default     = "karpenter"
+}
+
+variable "karpenter_service_account_name" {
+  description = "Kubernetes ServiceAccount used by the Karpenter controller."
+  type        = string
+  default     = "karpenter"
+}
+
+variable "karpenter_node_role_arn" {
+  description = "IAM role ARN used by EC2 worker nodes provisioned by Karpenter."
+  type        = string
+}
+
+
+# External Secrets Operator
+
+variable "external_secrets_namespace" {
+  description = "Kubernetes namespace used by External Secrets Operator."
+  type        = string
+  default     = "external-secrets"
+}
+
+variable "external_secrets_service_account_name" {
+  description = "Kubernetes ServiceAccount used by External Secrets Operator."
+  type        = string
+  default     = "external-secrets"
+}
+
+variable "external_secrets_secret_arns" {
+  description = "Secrets Manager secret ARNs that External Secrets Operator is allowed to read."
+  type        = list(string)
+}
+
+
+# ExternalDNS
+
+variable "external_dns_namespace" {
+  description = "Kubernetes namespace used by ExternalDNS."
+  type        = string
+  default     = "external-dns"
+}
+
+variable "external_dns_service_account_name" {
+  description = "Kubernetes ServiceAccount used by ExternalDNS."
+  type        = string
+  default     = "external-dns"
 }

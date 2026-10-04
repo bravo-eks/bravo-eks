@@ -1,0 +1,96 @@
+replicaCount: 1
+
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8080
+
+ports:
+  - name: http
+    containerPort: 8080
+    protocol: TCP
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 25%
+    maxSurge: 25%
+
+terminationGracePeriodSeconds: 30
+
+serviceAccount:
+  create: false
+  name: ""
+
+httpRoute:
+  enabled: false
+  data: {}
+
+externalSecret:
+  enabled: false
+  secretStoreRef:
+    name: ""
+    kind: ClusterSecretStore
+  data: []
+
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: null
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+
+pdb:
+  enabled: false
+  minAvailable: 1
+  maxUnavailable: null
+
+externalSecret:
+  enabled: false
+
+  refreshInterval: 1h
+
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+
+  target:
+    name: ""
+
+  data: []
+
+ingress:
+  enabled: false
+  className: traefik
+  annotations: {}
+  hosts: []
+  tls: []
+
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+  egressTo: []
+  allowPostgres: false
+  allowRedis: false
+  allowExternalHTTPS: false

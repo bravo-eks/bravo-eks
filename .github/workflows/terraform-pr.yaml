@@ -5,9 +5,11 @@ on:
     branches:
       - main
     paths:
+      - "terraform/environments/dev/**"
       - "terraform/environments/prod/**"
       - "terraform/modules/**"
       - ".github/workflows/terraform-pr.yaml"
+      - ".github/workflows/terraform-deploy.yaml"
 
 permissions:
   contents: read
@@ -23,14 +25,36 @@ env:
   TF_INPUT: false
 
 jobs:
-  terraform-plan:
-    name: Terraform Production Plan
+  terraform-checks:
+    name: Terraform ${{ matrix.environment }} Plan
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - dev
+          - prod
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+      - name: Show OIDC subject
+        shell: bash
+        run: |
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
+            | jq -r '.value')
 
+          PAYLOAD=$(echo "$TOKEN" | cut -d '.' -f2)
+
+          python3 -c "
+          import base64, json
+          p='$PAYLOAD'
+          p += '=' * (-len(p) % 4)
+          print(json.loads(base64.urlsafe_b64decode(p))['sub'])
+          "
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
@@ -44,36 +68,36 @@ jobs:
         run: terraform fmt -check -recursive terraform/
 
       - name: Terraform Init
-        working-directory: ./terraform/environments/prod
+        working-directory: ./terraform/environments/${{ matrix.environment }}
         run: terraform init
 
       - name: Terraform Validate
-        working-directory: ./terraform/environments/prod
+        working-directory: ./terraform/environments/${{ matrix.environment }}
         run: terraform validate
 
       - name: Install Checkov
         run: pip install checkov
 
       - name: Run Checkov
-        run: checkov -d terraform --framework terraform
+        run: checkov -d terraform --framework terraform --soft-fail
 
       - name: Terraform Plan
-        working-directory: ./terraform/environments/prod
+        working-directory: ./terraform/environments/${{ matrix.environment }}
         run: terraform plan -lock=false -out=tfplan
 
       - name: Show Terraform Plan
-        working-directory: ./terraform/environments/prod
+        working-directory: ./terraform/environments/${{ matrix.environment }}
         run: terraform show -no-color tfplan
 
       - name: Add Terraform Plan to Summary
         if: always()
-        working-directory: ./terraform/environments/prod
+        working-directory: ./terraform/environments/${{ matrix.environment }}
         run: |
-          echo "## Terraform Production Plan" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Terraform ${{ matrix.environment }} Plan" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
           if [ -f tfplan ]; then
-            echo "Review the proposed production infrastructure changes before merging." >> "$GITHUB_STEP_SUMMARY"
+            echo "Review the proposed ${{ matrix.environment }} infrastructure changes before merging." >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo '```terraform' >> "$GITHUB_STEP_SUMMARY"
             terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"

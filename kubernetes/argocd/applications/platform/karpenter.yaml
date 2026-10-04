@@ -1,0 +1,35 @@
+# Installs Karpenter
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: karpenter
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+
+spec:
+  project: bravo-platform
+
+  sources:
+    - repoURL: public.ecr.aws/karpenter
+      chart: karpenter
+      targetRevision: 1.12.1
+      helm:
+        valueFiles:
+          - $values/kubernetes/platform/karpenter/values.yaml
+
+    - repoURL: https://github.com/bravo-eks/bravo-eks.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: karpenter
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

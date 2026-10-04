@@ -1,0 +1,30 @@
+provider:
+  name: aws
+
+sources:
+ - gateway-httproute
+
+domainFilters:
+  - "bravoorders.com"
+
+zoneIdFilters:
+  - "Z094258811V8WSH58ZFW5"
+
+registry: txt
+txtOwnerId: "bravo-eks"
+
+policy: sync
+
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+    eks.amazonaws.com/role-arn: "PLACEHOLDER_EXTERNAL_DNS_IAM_ROLE_ARN"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi

@@ -1,0 +1,69 @@
+replicaCount: 1
+
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: health
+    containerPort: 8091
+    protocol: TCP
+
+service:
+  type: ClusterIP
+  portName: health
+  port: 8091
+  targetPort: 8091
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: health
+  periodSeconds: 5
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: health
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: health
+
+env: []
+
+envFrom: []
+
+configMap:
+  enabled: false
+
+externalSecret:
+  enabled: true
+
+hpa:
+  enabled: false
+
+pdb:
+  enabled: false
+
+ingress:
+  enabled: false
+
+networkPolicy:
+  enabled: true
+  ingressFrom: []
+  egressTo: []
+  allowPostgres: true
+  allowRedis: false
+  allowExternalHTTPS: false
