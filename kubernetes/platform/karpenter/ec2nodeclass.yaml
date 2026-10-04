@@ -4,17 +4,17 @@ metadata:
   name: application
 
 spec:
-  role: bravo-eks-prod-node-role
+  role: bravo-dev-node-role
 
   amiSelectorTerms:
     - alias: al2023@latest
 
   subnetSelectorTerms:
     - tags:
-        Name: "bravo-eks-private-*"
+        Name: "bravo-dev-private-*"
 
   securityGroupSelectorTerms:
-    - name: "eks-cluster-sg-bravo-eks-prod-*"
+    - name: "eks-cluster-sg-bravo-dev-*"
 
   metadataOptions:
     httpEndpoint: enabled
@@ -24,5 +24,5 @@ spec:
 
   tags:
     Project: bravo-eks
-    Environment: production
+    Environment: dev
     ManagedBy: Karpenter
