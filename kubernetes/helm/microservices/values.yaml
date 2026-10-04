@@ -32,13 +32,6 @@ httpRoute:
   enabled: false
   data: {}
 
-externalSecret:
-  enabled: false
-  secretStoreRef:
-    name: ""
-    kind: ClusterSecretStore
-  data: []
-
 hpa:
   enabled: false
   minReplicas: 1
@@ -94,3 +87,19 @@ networkPolicy:
   allowPostgres: false
   allowRedis: false
   allowExternalHTTPS: false
+
+  dns:
+    enabled: true
+    namespaceSelector:
+      kubernetes.io/metadata.name: kube-system
+    podSelector:
+      k8s-app: kube-dns
+
+  postgres:
+    port: 5432
+
+  redis:
+    port: 6379
+
+  externalHTTPS:
+    port: 443

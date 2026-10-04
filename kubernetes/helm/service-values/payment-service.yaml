@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  repository: ""
-  tag: ""
+  repository: "304960797322.dkr.ecr.eu-west-2.amazonaws.com/payment-service"
+  tag: "2114c490647781ecacbfd0444ad4a4cebad6c321"
   pullPolicy: IfNotPresent
 
 ports:
