@@ -57,10 +57,19 @@ spec:
   ingress:
     {{- range .Values.networkPolicy.ingressFrom }}
     - from:
-        - podSelector:
+        - {{- if .namespace }}
+          namespaceSelector:
             matchLabels:
+              kubernetes.io/metadata.name: {{ .namespace }}
+          {{- end }}
+          podSelector:
+            matchLabels:
+              {{- if .podLabels }}
+              {{- toYaml .podLabels | nindent 14 }}
+              {{- else }}
               app.kubernetes.io/name: {{ include "bravo-app.name" $ }}
               app.kubernetes.io/instance: {{ .service }}
+              {{- end }}
       ports:
         - protocol: TCP
           port: {{ $.Values.service.targetPort }}
