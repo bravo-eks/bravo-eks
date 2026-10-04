@@ -102,5 +102,8 @@ module "iam" {
 
   sqs_queue_arns = [module.sqs.queue_arn]
 
-  external_secrets_secret_arns = [module.rds.master_user_secret_arn]
+  external_secrets_secret_arns = [
+    module.rds.master_user_secret_arn,
+    aws_secretsmanager_secret.runtime.arn
+  ]
 }

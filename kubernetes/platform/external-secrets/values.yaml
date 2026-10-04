@@ -4,7 +4,7 @@ serviceAccount:
   create: true
   name: external-secrets
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/bravo-prod-external-secrets"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-external-secrets"
 
 resources:
   requests:

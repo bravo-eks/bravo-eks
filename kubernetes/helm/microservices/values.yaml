@@ -27,6 +27,7 @@ terminationGracePeriodSeconds: 30
 serviceAccount:
   create: false
   name: ""
+  annotations: {}
 
 httpRoute:
   enabled: false
@@ -70,6 +71,7 @@ externalSecret:
 
   target:
     name: ""
+    template: {}
 
   data: []
 

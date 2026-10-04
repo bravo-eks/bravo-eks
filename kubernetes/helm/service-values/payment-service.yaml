@@ -41,15 +41,37 @@ readinessProbe:
     path: /healthz
     port: http
 
-env: []
+env:
+  - name: SQS_QUEUE_URL
+    value: "https://sqs.eu-west-2.amazonaws.com/304960797322/bravo-dev-events"
+  - name: AWS_REGION
+    value: "eu-west-2"
 
-envFrom: []
+envFrom:
+  - secretRef:
+      name: payment-service-bravo-app
 
 configMap:
   enabled: false
 
+serviceAccount:
+  create: true
+  name: payment-service
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-payment-service"
+
 externalSecret:
   enabled: true
+  target:
+    template:
+      engineVersion: v2
+      data:
+        DATABASE_URL: 'postgres://bravoadmin:{{ .dbPassword | urlquery }}@bravo-dev-postgres.c54ie6i6yszp.eu-west-2.rds.amazonaws.com:5432/bravodev?sslmode=require'
+  data:
+    - secretKey: dbPassword
+      remoteRef:
+        key: rds!db-3934bf46-bfb6-4352-983d-0260f319a9c4
+        property: password
 
 hpa:
   enabled: false
@@ -65,6 +87,7 @@ networkPolicy:
   enabled: true
   ingressFrom:
     - service: api-gateway
+    - service: worker
   egressTo: []
   allowPostgres: true
   allowRedis: false

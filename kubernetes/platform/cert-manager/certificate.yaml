@@ -14,4 +14,4 @@ spec:
     group: cert-manager.io
 
   dnsNames:
-    - PRODUCTION_HOSTNAME_PLACEHOLDER
+    - bravoorders.com
