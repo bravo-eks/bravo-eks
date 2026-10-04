@@ -41,7 +41,9 @@ readinessProbe:
     path: /healthz
     port: http
 
-env: []
+env:
+  - name: API_GATEWAY_URL
+    value: "http://api-gateway-bravo-app:80"
 
 envFrom:
   - secretRef:
@@ -70,14 +72,41 @@ pdb:
   enabled: true
   minAvailable: 1
 
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: bravo-gateway
+      namespace: traefik
+  hostnames:
+    - bravoorders.com
+  path:
+    type: PathPrefix
+    value: /
+
 ingress:
   enabled: false
 
 networkPolicy:
   enabled: true
   ingressFrom:
+    - namespace: traefik
+      podLabels:
+        app.kubernetes.io/name: traefik
+  egressTo:
     - service: api-gateway
-  egressTo: []
+      port: 8080
   allowPostgres: true
   allowRedis: false
   allowExternalHTTPS: false

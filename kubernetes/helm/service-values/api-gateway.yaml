@@ -95,7 +95,7 @@ pdb:
   minAvailable: 1
 
 httpRoute:
-  enabled: true
+  enabled: false
   parentRefs:
     - name: bravo-gateway
       namespace: traefik
@@ -114,7 +114,8 @@ ingress:
 
 networkPolicy:
   enabled: true
-  ingressFrom: []
+  ingressFrom:
+    - service: dashboard-api
   egressTo:
     - service: order-service
       port: 8081
