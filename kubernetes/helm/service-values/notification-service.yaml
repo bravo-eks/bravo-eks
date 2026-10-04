@@ -43,13 +43,25 @@ readinessProbe:
 
 env: []
 
-envFrom: []
+envFrom:
+  - secretRef:
+      name: notification-service-bravo-app
 
 configMap:
   enabled: false
 
 externalSecret:
   enabled: true
+  target:
+    template:
+      engineVersion: v2
+      data:
+        DATABASE_URL: 'postgres://bravoadmin:{{ .dbPassword | urlquery }}@bravo-dev-postgres.c54ie6i6yszp.eu-west-2.rds.amazonaws.com:5432/bravodev?sslmode=require'
+  data:
+    - secretKey: dbPassword
+      remoteRef:
+        key: rds!db-3934bf46-bfb6-4352-983d-0260f319a9c4
+        property: password
 
 hpa:
   enabled: false
