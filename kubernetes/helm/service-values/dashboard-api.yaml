@@ -16,6 +16,16 @@ service:
   port: 80
   targetPort: 8086
 
+containerSecurityContext:
+  runAsUser: 100
+  runAsGroup: 101
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
 resources:
   requests:
     cpu: 100m

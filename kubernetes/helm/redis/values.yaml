@@ -26,7 +26,7 @@ persistence:
   enabled: true
   size: 10Gi
   accessMode: ReadWriteOnce
-  storageClass: gp3
+  storageClass: gp2
 
 terminationGracePeriodSeconds: 30
 
