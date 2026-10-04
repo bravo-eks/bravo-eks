@@ -8,6 +8,8 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,6 +22,7 @@ import (
 var staticFiles embed.FS
 
 var db *sql.DB
+var apiGatewayProxy *httputil.ReverseProxy
 
 func main() {
 	dbURL := os.Getenv("DATABASE_URL")
@@ -40,6 +43,17 @@ func main() {
 
 	waitForDB()
 
+	apiGatewayURL := getEnv("API_GATEWAY_URL", "http://api-gateway:8080")
+	apiGatewayTarget, err := url.ParseRequestURI(apiGatewayURL)
+	if err != nil || apiGatewayTarget.Scheme == "" || apiGatewayTarget.Host == "" {
+		log.Fatalf("invalid API_GATEWAY_URL: %q", apiGatewayURL)
+	}
+	apiGatewayProxy = httputil.NewSingleHostReverseProxy(apiGatewayTarget)
+	apiGatewayProxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf("API gateway proxy error: %v", err)
+		httpError(w, "service unavailable", http.StatusBadGateway)
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/livez", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -51,6 +65,8 @@ func main() {
 	mux.HandleFunc("/dashboard/revenue", handleRevenue)
 	mux.HandleFunc("/dashboard/inventory/alerts", handleInventoryAlerts)
 	mux.HandleFunc("/dashboard/shipping/overview", handleShippingOverview)
+	mux.Handle("/api/", apiGatewayProxy)
+	mux.Handle("/auth/", apiGatewayProxy)
 
 	// Serve frontend UI
 	staticFS, _ := fs.Sub(staticFiles, "static")
