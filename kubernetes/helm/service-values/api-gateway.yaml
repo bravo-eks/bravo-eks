@@ -47,13 +47,30 @@ readinessProbe:
 
 env: []
 
-envFrom: []
+envFrom:
+  - secretRef:
+      name: api-gateway-bravo-app
 
 configMap:
   enabled: false
 
 externalSecret:
   enabled: true
+  target:
+    template:
+      engineVersion: v2
+      data:
+        JWT_SECRET: '{{ .jwtSecret }}'
+        REDIS_URL: 'redis://:{{ .redisPassword | urlquery }}@redis.redis.svc.cluster.local:6379/0'
+  data:
+    - secretKey: jwtSecret
+      remoteRef:
+        key: bravo-dev-runtime
+        property: jwt_secret
+    - secretKey: redisPassword
+      remoteRef:
+        key: bravo-dev-runtime
+        property: redis_password
 
 hpa:
   enabled: true
@@ -65,15 +82,22 @@ pdb:
   enabled: true
   minAvailable: 1
 
-ingress:
+httpRoute:
   enabled: true
+  parentRefs:
+    - name: bravo-gateway
+      namespace: traefik
+  hostnames:
+    - bravoorders.com
+  path:
+    type: PathPrefix
+    value: /
+
+ingress:
+  enabled: false
   className: traefik
   annotations: {}
-  hosts:
-    - host: ""
-      paths:
-        - path: /
-          pathType: Prefix
+  hosts: []
   tls: []
 
 networkPolicy:
