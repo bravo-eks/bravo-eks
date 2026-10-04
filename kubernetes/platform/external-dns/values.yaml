@@ -19,7 +19,7 @@ serviceAccount:
   create: true
   name: external-dns
   annotations:
-    eks.amazonaws.com/role-arn: "PLACEHOLDER_EXTERNAL_DNS_IAM_ROLE_ARN"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-external-dns"
 
 resources:
   requests:
