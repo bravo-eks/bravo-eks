@@ -87,13 +87,6 @@ podSecurityContext:
   seccompProfile:
     type: RuntimeDefault
 
-containerSecurityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
-  capabilities:
-    drop:
-      - ALL
-
 httpRoute:
   enabled: true
   parentRefs:
