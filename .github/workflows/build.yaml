@@ -187,7 +187,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
       - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ matrix.service }}:${{ github.sha }}
           format: table
