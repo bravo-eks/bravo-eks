@@ -33,15 +33,6 @@ output "rds_endpoint" {
   value       = module.rds.db_endpoint
 }
 
-output "ecr_repository_urls" {
-  description = "URLs of the dev ECR repositories."
-  value       = module.ecr.repository_urls
-}
-
-output "ecr_repository_arns" {
-  description = "ARNs of the dev ECR repositories."
-  value       = module.ecr.repository_arns
-}
 
 # EKS / Kubernetes
 
