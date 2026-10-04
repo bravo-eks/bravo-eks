@@ -8,7 +8,7 @@ locals {
   }
 }
 
-# SQS
+## SQS
 module "sqs" {
   source = "../../modules/sqs"
 
