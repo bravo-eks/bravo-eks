@@ -60,6 +60,9 @@ serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-payment-service"
 
+migration:
+  enabled: true
+
 externalSecret:
   enabled: true
   refreshInterval: 1h
