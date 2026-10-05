@@ -62,6 +62,7 @@ externalSecret:
     - secretKey: DATABASE_URL
       remoteRef:
         key: bravo/dev/notification-service/database
+        property: DATABASE_URL
 
 autoscaling:
   enabled: false
