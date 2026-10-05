@@ -2,7 +2,7 @@ configuration:
   backupStorageLocation:
     - name: default
       provider: aws
-      bucket: YOUR_VELERO_BUCKET_NAME
+      bucket: bravo-eksv2-velero-backups
       config:
         region: eu-west-2
 
@@ -20,7 +20,7 @@ serviceAccount:
     create: true
     name: velero
     annotations:
-      eks.amazonaws.com/role-arn: YOUR_VELERO_ROLE_ARN
+       eks.amazonaws.com/role-arn: arn:aws:iam::304960797322:role/bravo-dev-velero
 
 features: EnableCSI
 
@@ -33,3 +33,10 @@ schedules:
       includedNamespaces:
         - redis
       ttl: 168h
+
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.13.2
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
