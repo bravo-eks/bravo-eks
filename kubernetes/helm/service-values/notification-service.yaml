@@ -50,6 +50,9 @@ envFrom:
 configMap:
   enabled: false
 
+migration:
+  enabled: true
+
 externalSecret:
   enabled: true
   refreshInterval: 1h

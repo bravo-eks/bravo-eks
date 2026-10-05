@@ -33,6 +33,10 @@ httpRoute:
   enabled: false
   data: {}
 
+migration:
+  enabled: false
+  backoffLimit: 3
+
 externalSecret:
   enabled: false
   refreshInterval: 1h
