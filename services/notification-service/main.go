@@ -39,6 +39,10 @@ func main() {
 
 	if getEnv("RUN_MIGRATIONS", "false") == "true" {
 		migrate()
+		if getEnv("MIGRATIONS_ONLY", "false") == "true" {
+			log.Println("Migration-only mode complete")
+			return
+		}
 	}
 
 	mux := http.NewServeMux()

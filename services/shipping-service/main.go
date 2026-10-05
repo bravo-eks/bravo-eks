@@ -59,6 +59,10 @@ func main() {
 
 	if strings.EqualFold(os.Getenv("RUN_MIGRATIONS"), "true") {
 		migrate()
+		if strings.EqualFold(os.Getenv("MIGRATIONS_ONLY"), "true") {
+			log.Println("Migration-only mode complete")
+			return
+		}
 	} else {
 		log.Println("Database migrations disabled; set RUN_MIGRATIONS=true to run migrations")
 	}

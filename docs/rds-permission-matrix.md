@@ -53,14 +53,14 @@ Normal service users can operate only within their own schema.
 
 ### scheduler_user
 
-Permissions confirmed from `services/scheduler/main.go`:
+Permissions confirmed from `services/scheduler/main.go` and live scheduler execution:
 
 | Schema | Table | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---:|---:|---:|---:|
 | inventory | reservations | ✓ | ✗ | ✓ | ✗ |
 | inventory | products | ✗ | ✗ | ✓ | ✗ |
 | orders | orders | ✓ | ✗ | ✓ | ✗ |
-| orders | order_events | ✗ | ✗ | ✗ | ✓ |
+| orders | order_events | ✓ | ✗ | ✗ | ✓ |
 | payments | payments | ✓ | ✗ | ✗ | ✗ |
 
 ### dashboard_user
