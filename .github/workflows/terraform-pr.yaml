@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - "terraform/bootstrap/**"
       - "terraform/environments/dev/**"
       - "terraform/environments/prod/**"
       - "terraform/modules/**"
@@ -98,6 +99,65 @@ jobs:
 
           if [ -f tfplan ]; then
             echo "Review the proposed ${{ matrix.environment }} infrastructure changes before merging." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```terraform' >> "$GITHUB_STEP_SUMMARY"
+            terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Terraform plan was not generated. Check the failed workflow step." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  terraform-bootstrap-checks:
+    name: Terraform Bootstrap Plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-pr
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive terraform/bootstrap
+
+      - name: Terraform Init
+        working-directory: ./terraform/bootstrap
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./terraform/bootstrap
+        run: terraform validate
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov
+        run: checkov -d terraform/bootstrap --framework terraform --soft-fail
+
+      - name: Terraform Plan
+        working-directory: ./terraform/bootstrap
+        run: terraform plan -lock=false -out=tfplan
+
+      - name: Show Terraform Plan
+        working-directory: ./terraform/bootstrap
+        run: terraform show -no-color tfplan
+
+      - name: Add Terraform Plan to Summary
+        if: always()
+        working-directory: ./terraform/bootstrap
+        run: |
+          echo "## Terraform Bootstrap Plan" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f tfplan ]; then
+            echo "Review the proposed account-level bootstrap changes before merging." >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo '```terraform' >> "$GITHUB_STEP_SUMMARY"
             terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"
