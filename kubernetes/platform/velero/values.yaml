@@ -1,0 +1,35 @@
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: YOUR_VELERO_BUCKET_NAME
+      config:
+        region: eu-west-2
+
+  volumeSnapshotLocation:
+    - name: default
+      provider: aws
+      config:
+        region: eu-west-2
+
+credentials:
+  useSecret: false
+
+serviceAccount:
+  server:
+    create: true
+    name: velero
+    annotations:
+      eks.amazonaws.com/role-arn: YOUR_VELERO_ROLE_ARN
+
+features: EnableCSI
+
+deployNodeAgent: false
+
+schedules:
+  redis-daily:
+    schedule: "0 2 * * *"
+    template:
+      includedNamespaces:
+        - redis
+      ttl: 168h

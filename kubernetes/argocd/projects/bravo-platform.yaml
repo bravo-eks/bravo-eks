@@ -17,6 +17,7 @@ spec:
     - public.ecr.aws/karpenter
     - https://github.com/kubernetes-sigs/gateway-api.git
     - https://kubernetes-sigs.github.io/metrics-server/
+    - https://vmware-tanzu.github.io/helm-charts
 
   destinations:
     - namespace: argocd

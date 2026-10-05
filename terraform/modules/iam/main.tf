@@ -493,3 +493,112 @@ resource "aws_iam_role_policy_attachment" "external_secrets" {
   role       = aws_iam_role.external_secrets.name
   policy_arn = aws_iam_policy.external_secrets.arn
 }
+
+# Velero - IRSA Trust Policy
+
+data "aws_iam_policy_document" "velero_assume_role" {
+  statement {
+    sid    = "AllowVeleroServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.velero_namespace}:${var.velero_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "velero" {
+  name               = "${var.name_prefix}-velero"
+  description        = "IAM role assumed by Velero using IRSA for Kubernetes backups and EBS snapshots."
+  assume_role_policy = data.aws_iam_policy_document.velero_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-velero"
+      Component = "velero"
+    }
+  )
+}
+
+# Velero - AWS Permissions
+
+data "aws_iam_policy_document" "velero" {
+  statement {
+    sid    = "EBSVolumeSnapshots"
+    effect = "Allow"
+
+    actions = [
+      "ec2:DescribeVolumes",
+      "ec2:DescribeSnapshots",
+      "ec2:CreateSnapshot",
+      "ec2:DeleteSnapshot",
+      "ec2:CreateTags"
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "VeleroS3Bucket"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:DeleteObject",
+      "s3:PutObject",
+      "s3:AbortMultipartUpload",
+      "s3:ListMultipartUploadParts"
+    ]
+
+    resources = [
+      "${var.velero_backup_bucket_arn}/*"
+    ]
+  }
+
+  statement {
+    sid    = "VeleroS3BucketList"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation"
+    ]
+
+    resources = [
+      var.velero_backup_bucket_arn
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "velero" {
+  name   = "${var.name_prefix}-velero"
+  role   = aws_iam_role.velero.id
+  policy = data.aws_iam_policy_document.velero.json
+}
