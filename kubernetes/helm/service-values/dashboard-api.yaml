@@ -74,6 +74,7 @@ externalSecret:
     - secretKey: DATABASE_URL
       remoteRef:
         key: bravo/dev/dashboard-api/database
+        property: DATABASE_URL
 
 autoscaling:
   enabled: false
