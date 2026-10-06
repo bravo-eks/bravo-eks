@@ -25,6 +25,8 @@ spec:
     - repoURL: https://github.com/bravo-eks/bravo-eks.git
       targetRevision: main
       path: kubernetes/platform/monitoring
+      directory:
+        exclude: values.yaml
 
   destination:
     server: https://kubernetes.default.svc
