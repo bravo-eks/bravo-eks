@@ -274,7 +274,8 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "s3:Get*",
           "s3:List*",
           "s3:PutObject",
-          "s3:DeleteObject"
+          "s3:DeleteObject",
+          "s3:PutEncryptionConfiguration"
         ]
 
         Resource = [
