@@ -122,7 +122,16 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
 
         Action = [
           "s3:ListBucket",
-          "s3:GetObject"
+          "s3:GetObject",
+          "s3:GetBucketPolicy",
+          "s3:GetBucketAcl",
+          "s3:GetBucketVersioning",
+          "s3:GetBucketPublicAccessBlock",
+          "s3:GetBucketOwnershipControls",
+          "s3:GetEncryptionConfiguration",
+          "s3:GetBucketCORS",
+          "s3:GetBucketTagging",
+          "s3:GetBucketLocation"
         ]
 
         Resource = [
@@ -171,6 +180,19 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
           "sqs:GetQueueUrl",
           "sqs:ListQueues",
           "sqs:ListQueueTags"
+        ]
+
+        Resource = "*"
+      },
+      {
+        Sid    = "ECRRead"
+        Effect = "Allow"
+
+        Action = [
+          "ecr:DescribeRepositories",
+          "ecr:GetLifecyclePolicy",
+          "ecr:GetRepositoryPolicy",
+          "ecr:ListTagsForResource"
         ]
 
         Resource = "*"
