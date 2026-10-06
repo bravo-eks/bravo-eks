@@ -271,8 +271,8 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
         Effect = "Allow"
 
         Action = [
-          "s3:ListBucket",
-          "s3:GetObject",
+          "s3:Get*",
+          "s3:List*",
           "s3:PutObject",
           "s3:DeleteObject"
         ]
