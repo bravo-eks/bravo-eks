@@ -116,14 +116,14 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
     Version = "2012-10-17"
 
     Statement = [
-        {
-  Sid    = "TerraformStateRead"
-  Effect = "Allow"
+      {
+        Sid    = "TerraformStateRead"
+        Effect = "Allow"
 
-  Action = [
-    "s3:Get*",
-    "s3:List*"
-  ]
+        Action = [
+          "s3:Get*",
+          "s3:List*"
+        ]
         Resource = [
           aws_s3_bucket.terraform_state.arn,
           "${aws_s3_bucket.terraform_state.arn}/*"
