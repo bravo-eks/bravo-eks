@@ -20,9 +20,17 @@ spec:
     server: https://kubernetes.default.svc
     namespace: microservices
 
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: worker-bravo-app
+      jsonPointers:
+        - /spec/replicas
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
