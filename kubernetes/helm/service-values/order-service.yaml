@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  repository: ""
-  tag: ""
+  repository: "304960797322.dkr.ecr.eu-west-2.amazonaws.com/order-service"
+  tag: "0c0ed2e7fb6adadef4a3bc1e4fe299dd9796127b"
   pullPolicy: IfNotPresent
 
 ports:
@@ -41,17 +41,43 @@ readinessProbe:
     path: /healthz
     port: http
 
-env: []
+env:
+  - name: SQS_QUEUE_URL
+    value: "https://sqs.eu-west-2.amazonaws.com/304960797322/bravo-dev-events"
+  - name: AWS_REGION
+    value: "eu-west-2"
 
-envFrom: []
+envFrom:
+  - secretRef:
+      name: order-service-database
 
 configMap:
   enabled: false
 
-externalSecret:
+serviceAccount:
+  create: true
+  name: order-service
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-order-service"
+
+migration:
   enabled: true
 
-hpa:
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: order-service-database
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: bravo/dev/order-service/database
+        property: DATABASE_URL
+
+autoscaling:
   enabled: false
 
 pdb:
@@ -65,6 +91,7 @@ networkPolicy:
   enabled: true
   ingressFrom:
     - service: api-gateway
+    - service: worker
   egressTo: []
   allowPostgres: true
   allowRedis: false

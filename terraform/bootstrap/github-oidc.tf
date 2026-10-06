@@ -33,7 +33,7 @@ resource "aws_iam_role" "github_ecr" {
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks/bravo-eks:environment:production"
+            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks@330665479/bravo-eks@1373795192:environment:production"
           }
         }
       }
@@ -100,7 +100,7 @@ resource "aws_iam_role" "github_terraform_pr" {
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks/bravo-eks:pull_request"
+            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks@330665479/bravo-eks@1373795192:pull_request"
           }
         }
       }
@@ -185,6 +185,33 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
         ]
 
         Resource = "*"
+      },
+      {
+        Sid    = "SecretsManagerRead"
+        Effect = "Allow"
+
+        Action = [
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetResourcePolicy",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:ListSecretVersionIds"
+        ]
+
+        Resource = "*"
+      },
+      {
+        Sid    = "KMSRead"
+        Effect = "Allow"
+
+        Action = [
+          "kms:DescribeKey",
+          "kms:GetKeyPolicy",
+          "kms:GetKeyRotationStatus",
+          "kms:ListAliases",
+          "kms:ListResourceTags"
+        ]
+
+        Resource = "*"
       }
     ]
   })
@@ -211,7 +238,7 @@ resource "aws_iam_role" "github_terraform_deploy" {
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks/bravo-eks:ref:refs/heads/main"
+            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks@330665479/bravo-eks@1373795192:ref:refs/heads/main"
           }
         }
       }
@@ -424,11 +451,96 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "iam:SetDefaultPolicyVersion",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
-          "iam:PassRole"
+          "iam:PassRole",
+          "iam:TagPolicy",
+          "iam:UntagPolicy",
+          "iam:CreateServiceLinkedRole"
         ]
 
         Resource = "*"
-      }
+      },
+
+      # ECR
+
+      {
+        Sid    = "ECRManage"
+        Effect = "Allow"
+
+        Action = [
+          "ecr:CreateRepository",
+          "ecr:DeleteRepository",
+          "ecr:DescribeRepositories",
+          "ecr:ListTagsForResource",
+          "ecr:TagResource",
+          "ecr:UntagResource",
+          "ecr:PutLifecyclePolicy",
+          "ecr:GetLifecyclePolicy",
+          "ecr:DeleteLifecyclePolicy"
+        ]
+
+        Resource = "*"
+      },
+
+      # KMS
+
+      {
+        Sid    = "KMSManage"
+        Effect = "Allow"
+
+        Action = [
+          "kms:CreateKey",
+          "kms:DescribeKey",
+          "kms:EnableKeyRotation",
+          "kms:GetKeyRotationStatus",
+          "kms:CreateAlias",
+          "kms:DeleteAlias",
+          "kms:UpdateAlias",
+          "kms:ListAliases",
+          "kms:TagResource",
+          "kms:UntagResource",
+          "kms:ListResourceTags",
+          "kms:ScheduleKeyDeletion",
+          "kms:GetKeyPolicy",
+          "kms:CreateGrant",
+          "kms:CancelKeyDeletion"
+        ]
+
+        Resource = "*"
+      },
+
+      # Secrets Manager
+
+      {
+        Sid    = "SecretsManagerManage"
+        Effect = "Allow"
+
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:TagResource"
+        ]
+
+        Resource = "*"
+      },
+
+      # EKS OIDC
+
+      {
+        Sid    = "OIDCManage"
+        Effect = "Allow"
+
+        Action = [
+          "iam:CreateOpenIDConnectProvider",
+          "iam:GetOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint",
+          "iam:AddClientIDToOpenIDConnectProvider",
+          "iam:RemoveClientIDFromOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:TagOpenIDConnectProvider",
+          "iam:UntagOpenIDConnectProvider"
+        ]
+
+        Resource = "*"
+      },
     ]
   })
 }

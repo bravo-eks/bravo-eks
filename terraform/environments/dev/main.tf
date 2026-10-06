@@ -6,38 +6,16 @@ locals {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
-
-  services = [
-    "api-gateway",
-    "order-service",
-    "inventory-service",
-    "payment-service",
-    "notification-service",
-    "shipping-service",
-    "worker",
-    "scheduler",
-    "dashboard-api"
-  ]
 }
 
-# ECR repositories
-module "ecr" {
-  source = "../../modules/ecr"
-
-  ecr_repositories = [
-    for service in local.services :
-    "${local.name_prefix}-${service}"
-  ]
-}
-
-# SQS
+## SQS
 module "sqs" {
   source = "../../modules/sqs"
 
   queue_name = "${local.name_prefix}-events"
 }
 
-# VPC
+## VPC
 module "vpc" {
   source = "../../modules/vpc"
 
@@ -45,7 +23,7 @@ module "vpc" {
   enable_nat_gateway = var.enable_nat_gateway
 }
 
-# EKS
+## EKS
 module "eks" {
   source = "../../modules/eks"
 
@@ -61,7 +39,7 @@ module "eks" {
   tags                       = local.tags
 }
 
-# RDS PostgreSQL
+## RDS PostgreSQL
 module "rds" {
   source = "../../modules/rds"
 
@@ -81,7 +59,7 @@ module "rds" {
   backup_retention_period = 1
 }
 
-# IAM
+## IAM
 module "iam" {
   source = "../../modules/iam"
 

@@ -27,19 +27,31 @@ terminationGracePeriodSeconds: 30
 serviceAccount:
   create: false
   name: ""
+  annotations: {}
 
 httpRoute:
   enabled: false
   data: {}
 
+migration:
+  enabled: false
+  backoffLimit: 3
+
 externalSecret:
   enabled: false
+  refreshInterval: 1h
+
   secretStoreRef:
-    name: ""
+    name: aws-secrets-manager
     kind: ClusterSecretStore
+
+  target:
+    name: ""
+    template: {}
+
   data: []
 
-hpa:
+autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 3
@@ -66,20 +78,6 @@ pdb:
   minAvailable: 1
   maxUnavailable: null
 
-externalSecret:
-  enabled: false
-
-  refreshInterval: 1h
-
-  secretStoreRef:
-    name: aws-secrets-manager
-    kind: ClusterSecretStore
-
-  target:
-    name: ""
-
-  data: []
-
 ingress:
   enabled: false
   className: traefik
@@ -89,8 +87,26 @@ ingress:
 
 networkPolicy:
   enabled: false
+
+  dns:
+    enabled: true
+    namespaceSelector:
+      kubernetes.io/metadata.name: kube-system
+    podSelector:
+      k8s-app: kube-dns
+
   ingressFrom: []
   egressTo: []
+
   allowPostgres: false
   allowRedis: false
   allowExternalHTTPS: false
+
+  postgres:
+    port: 5432
+
+  redis:
+    port: 6379
+
+  externalHTTPS:
+    port: 443

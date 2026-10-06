@@ -3,8 +3,8 @@ crds:
   keep: true
 
 config:
-  enablegatewayAPI: true
-
+ enableGatewayAPI: true
+ 
 resources:
   requests:
     cpu: 10m

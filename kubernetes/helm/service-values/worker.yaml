@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: ""
-  tag: ""
+  repository: "304960797322.dkr.ecr.eu-west-2.amazonaws.com/worker"
+  tag: "2114c490647781ecacbfd0444ad4a4cebad6c321"
   pullPolicy: IfNotPresent
 
 ports:
@@ -41,17 +41,37 @@ readinessProbe:
     path: /healthz
     port: health
 
-env: []
+env:
+  - name: SQS_QUEUE_URL
+    value: "https://sqs.eu-west-2.amazonaws.com/304960797322/bravo-dev-events"
+  - name: AWS_REGION
+    value: "eu-west-2"
+  - name: ORDER_SERVICE_URL
+    value: "http://order-service-bravo-app:80"
+  - name: INVENTORY_SERVICE_URL
+    value: "http://inventory-service-bravo-app:80"
+  - name: PAYMENT_SERVICE_URL
+    value: "http://payment-service-bravo-app:80"
+  - name: NOTIFICATION_SERVICE_URL
+    value: "http://notification-service-bravo-app:80"
+  - name: SHIPPING_SERVICE_URL
+    value: "http://shipping-service-bravo-app:80"
 
 envFrom: []
 
 configMap:
   enabled: false
 
-externalSecret:
-  enabled: true
+serviceAccount:
+  create: true
+  name: worker
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-worker"
 
-hpa:
+externalSecret:
+  enabled: false
+
+autoscaling:
   enabled: false
 
 pdb:
@@ -63,7 +83,17 @@ ingress:
 networkPolicy:
   enabled: true
   ingressFrom: []
-  egressTo: []
+  egressTo:
+    - service: order-service
+      port: 8081
+    - service: inventory-service
+      port: 8082
+    - service: payment-service
+      port: 8083
+    - service: notification-service
+      port: 8084
+    - service: shipping-service
+      port: 8085
   allowPostgres: false
   allowRedis: false
   allowExternalHTTPS: true

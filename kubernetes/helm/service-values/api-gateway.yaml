@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  repository: ""
-  tag: ""
+  repository: "304960797322.dkr.ecr.eu-west-2.amazonaws.com/api-gateway"
+  tag: "2114c490647781ecacbfd0444ad4a4cebad6c321"
   pullPolicy: IfNotPresent
 
 ports:
@@ -45,17 +45,46 @@ readinessProbe:
   periodSeconds: 5
   failureThreshold: 3
 
-env: []
+env:
+  - name: ORDER_SERVICE_URL
+    value: "http://order-service-bravo-app:80"
+  - name: INVENTORY_SERVICE_URL
+    value: "http://inventory-service-bravo-app:80"
+  - name: PAYMENT_SERVICE_URL
+    value: "http://payment-service-bravo-app:80"
+  - name: NOTIFICATION_SERVICE_URL
+    value: "http://notification-service-bravo-app:80"
+  - name: SHIPPING_SERVICE_URL
+    value: "http://shipping-service-bravo-app:80"
+  - name: DASHBOARD_SERVICE_URL
+    value: "http://dashboard-api-bravo-app:80"
 
-envFrom: []
+envFrom:
+  - secretRef:
+      name: api-gateway-bravo-app
 
 configMap:
   enabled: false
 
 externalSecret:
   enabled: true
+  target:
+    template:
+      engineVersion: v2
+      data:
+        JWT_SECRET: '{{ .jwtSecret }}'
+        REDIS_URL: 'redis://:{{ .redisPassword | urlquery }}@redis.redis.svc.cluster.local:6379/0'
+  data:
+    - secretKey: jwtSecret
+      remoteRef:
+        key: bravo-dev-runtime
+        property: jwt_secret
+    - secretKey: redisPassword
+      remoteRef:
+        key: bravo-dev-runtime
+        property: redis_password
 
-hpa:
+autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 5
@@ -65,21 +94,41 @@ pdb:
   enabled: true
   minAvailable: 1
 
+httpRoute:
+  enabled: false
+  parentRefs:
+    - name: bravo-gateway
+      namespace: traefik
+  hostnames:
+    - bravoorders.com
+  path:
+    type: PathPrefix
+    value: /
+
 ingress:
-  enabled: true
+  enabled: false
   className: traefik
   annotations: {}
-  hosts:
-    - host: ""
-      paths:
-        - path: /
-          pathType: Prefix
+  hosts: []
   tls: []
 
 networkPolicy:
   enabled: true
-  ingressFrom: []
-  egressTo: []
+  ingressFrom:
+    - service: dashboard-api
+  egressTo:
+    - service: order-service
+      port: 8081
+    - service: inventory-service
+      port: 8082
+    - service: payment-service
+      port: 8083
+    - service: notification-service
+      port: 8084
+    - service: shipping-service
+      port: 8085
+    - service: dashboard-api
+      port: 8086
   allowPostgres: false
   allowRedis: true
   allowExternalHTTPS: false

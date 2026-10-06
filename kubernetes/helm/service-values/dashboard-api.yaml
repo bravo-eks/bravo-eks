@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  repository: ""
-  tag: ""
+  repository: "304960797322.dkr.ecr.eu-west-2.amazonaws.com/dashboard-api"
+  tag: "c8bee0f69e2127105e54a6a921b8a35367aa32d8"
   pullPolicy: IfNotPresent
 
 ports:
@@ -15,6 +15,16 @@ service:
   portName: http
   port: 80
   targetPort: 8086
+
+containerSecurityContext:
+  runAsUser: 100
+  runAsGroup: 101
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
 
 resources:
   requests:
@@ -41,22 +51,53 @@ readinessProbe:
     path: /healthz
     port: http
 
-env: []
+env:
+  - name: API_GATEWAY_URL
+    value: "http://api-gateway-bravo-app:80"
 
-envFrom: []
+envFrom:
+  - secretRef:
+      name: dashboard-api-database
 
 configMap:
   enabled: false
 
 externalSecret:
   enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: dashboard-api-database
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: bravo/dev/dashboard-api/database
+        property: DATABASE_URL
 
-hpa:
+autoscaling:
   enabled: false
 
 pdb:
   enabled: true
   minAvailable: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: bravo-gateway
+      namespace: traefik
+  hostnames:
+    - bravoorders.com
+  path:
+    type: PathPrefix
+    value: /
 
 ingress:
   enabled: false
@@ -64,8 +105,12 @@ ingress:
 networkPolicy:
   enabled: true
   ingressFrom:
+    - namespace: traefik
+      podLabels:
+        app.kubernetes.io/name: traefik
+  egressTo:
     - service: api-gateway
-  egressTo: []
+      port: 8080
   allowPostgres: true
   allowRedis: false
   allowExternalHTTPS: false

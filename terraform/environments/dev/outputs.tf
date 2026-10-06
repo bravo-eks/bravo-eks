@@ -33,15 +33,6 @@ output "rds_endpoint" {
   value       = module.rds.db_endpoint
 }
 
-output "ecr_repository_urls" {
-  description = "URLs of the dev ECR repositories."
-  value       = module.ecr.repository_urls
-}
-
-output "ecr_repository_arns" {
-  description = "ARNs of the dev ECR repositories."
-  value       = module.ecr.repository_arns
-}
 
 # EKS / Kubernetes
 
@@ -105,4 +96,8 @@ output "external_secrets_role_arn" {
 output "external_dns_role_arn" {
   description = "ARN of the IAM role used by ExternalDNS in development."
   value       = module.iam.external_dns_role_arn
+}
+output "runtime_secret_arn" {
+  description = "ARN of the dev runtime application secret."
+  value       = aws_secretsmanager_secret.runtime.arn
 }

@@ -26,7 +26,7 @@ persistence:
   enabled: true
   size: 10Gi
   accessMode: ReadWriteOnce
-  storageClass: gp3
+  storageClass: gp2
 
 terminationGracePeriodSeconds: 30
 
@@ -47,3 +47,10 @@ probes:
   liveness:
     initialDelaySeconds: 15
     periodSeconds: 10
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  remoteKey: bravo-dev-runtime
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore

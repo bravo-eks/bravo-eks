@@ -1,11 +1,11 @@
 settings:
-  clusterName: bravo-eks-prod
+  clusterName: bravo-dev
 
 serviceAccount:
   create: true
   name: karpenter
   annotations:
-    eks.amazonaws.com/role-arn: REPLACE_WITH_KARPENTER_CONTROLLER_ROLE_ARN_WHEN_WERE_LIVE
+    eks.amazonaws.com/role-arn: arn:aws:iam::304960797322:role/bravo-dev-karpenter-controller
 
 replicas: 2
 

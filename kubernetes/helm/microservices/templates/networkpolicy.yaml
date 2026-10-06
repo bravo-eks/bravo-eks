@@ -1,39 +1,31 @@
 {{- if .Values.networkPolicy.enabled }}
-
-{{- range $serviceName, $service := .Values.services }}
-
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ $serviceName }}-default-deny
+  name: {{ include "bravo-app.fullname" . }}-default-deny
+  labels:
+    {{- include "bravo-app.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: {{ $serviceName }}
-      app.kubernetes.io/instance: {{ $.Release.Name }}
-
+      {{- include "bravo-app.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
-
 ---
-
-{{- end }}
-
 {{- if .Values.networkPolicy.dns.enabled }}
-
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-dns
+  name: {{ include "bravo-app.fullname" . }}-allow-dns
+  labels:
+    {{- include "bravo-app.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/instance: {{ .Release.Name }}
-
+      {{- include "bravo-app.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Egress
-
   egress:
     - to:
         - namespaceSelector:
@@ -42,92 +34,70 @@ spec:
           podSelector:
             matchLabels:
               {{- toYaml .Values.networkPolicy.dns.podSelector | nindent 14 }}
-
       ports:
         - protocol: UDP
           port: 53
-
         - protocol: TCP
           port: 53
-
 ---
-
 {{- end }}
-
-{{- range $serviceName, $service := .Values.services }}
-
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ $serviceName }}-communication
+  name: {{ include "bravo-app.fullname" . }}-communication
+  labels:
+    {{- include "bravo-app.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: {{ $serviceName }}
-      app.kubernetes.io/instance: {{ $.Release.Name }}
-
+      {{- include "bravo-app.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
-
   ingress:
-
-    {{- range $sourceService := $service.networkPolicy.ingressFrom }}
-
+    {{- range .Values.networkPolicy.ingressFrom }}
     - from:
-        - podSelector:
+        - {{ if .namespace }}namespaceSelector:
             matchLabels:
-              app.kubernetes.io/name: {{ $sourceService }}
-              app.kubernetes.io/instance: {{ $.Release.Name }}
-
+              kubernetes.io/metadata.name: {{ .namespace }}
+          {{ end }}podSelector:
+            matchLabels:
+              {{- if .podLabels }}
+              {{- toYaml .podLabels | nindent 14 }}
+              {{- else }}
+              app.kubernetes.io/name: {{ include "bravo-app.name" $ }}
+              app.kubernetes.io/instance: {{ .service }}
+              {{- end }}
       ports:
         - protocol: TCP
-          port: {{ $service.port }}
-
+          port: {{ $.Values.service.targetPort }}
     {{- end }}
-
   egress:
-
-    {{- range $destinationService := $service.networkPolicy.egressTo }}
-
+    {{- range .Values.networkPolicy.egressTo }}
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/name: {{ $destinationService }}
-              app.kubernetes.io/instance: {{ $.Release.Name }}
-
+              app.kubernetes.io/name: {{ include "bravo-app.name" $ }}
+              app.kubernetes.io/instance: {{ .service }}
+      {{- with .port }}
       ports:
         - protocol: TCP
-          port: {{ (index $.Values.services $destinationService).port }}
-
+          port: {{ . }}
+      {{- end }}
     {{- end }}
-
-    {{- if $service.networkPolicy.allowPostgres }}
-
+    {{- if .Values.networkPolicy.allowPostgres }}
     - ports:
         - protocol: TCP
-          port: {{ $.Values.networkPolicy.postgres.port }}
-
+          port: {{ .Values.networkPolicy.postgres.port }}
     {{- end }}
-
-    {{- if $service.networkPolicy.allowRedis }}
-
+    {{- if .Values.networkPolicy.allowRedis }}
     - ports:
         - protocol: TCP
-          port: {{ $.Values.networkPolicy.redis.port }}
-
+          port: {{ .Values.networkPolicy.redis.port }}
     {{- end }}
-
-    {{- if $service.networkPolicy.allowExternalHTTPS }}
-
+    {{- if .Values.networkPolicy.allowExternalHTTPS }}
     - ports:
         - protocol: TCP
-          port: {{ $.Values.networkPolicy.externalHTTPS.port }}
-
+          port: {{ .Values.networkPolicy.externalHTTPS.port }}
     {{- end }}
-
----
-
-{{- end }}
-
 {{- end }}
