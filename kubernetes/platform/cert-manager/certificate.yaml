@@ -15,3 +15,4 @@ spec:
 
   dnsNames:
     - bravoorders.com
+    - grafana.bravoorders.com
