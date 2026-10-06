@@ -602,3 +602,89 @@ resource "aws_iam_role_policy" "velero" {
   role   = aws_iam_role.velero.id
   policy = data.aws_iam_policy_document.velero.json
 }
+
+# KEDA - IRSA Trust Policy
+
+data "aws_iam_policy_document" "keda_assume_role" {
+  statement {
+    sid    = "AllowKedaOperatorServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.keda_namespace}:${var.keda_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "keda" {
+  name               = "${var.name_prefix}-keda"
+  description        = "IAM role assumed by the KEDA operator using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.keda_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-keda"
+      Component = "keda"
+    }
+  )
+}
+
+data "aws_iam_policy_document" "keda_sqs" {
+  statement {
+    sid    = "ReadQueueDepth"
+    effect = "Allow"
+
+    actions = [
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl"
+    ]
+
+    resources = var.sqs_queue_arns
+  }
+}
+
+resource "aws_iam_policy" "keda_sqs" {
+  name        = "${var.name_prefix}-keda-sqs"
+  description = "Least-privilege SQS queue inspection permissions for KEDA autoscaling."
+  policy      = data.aws_iam_policy_document.keda_sqs.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-keda-sqs"
+      Component = "keda"
+    }
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "keda_sqs" {
+  role       = aws_iam_role.keda.name
+  policy_arn = aws_iam_policy.keda_sqs.arn
+}
