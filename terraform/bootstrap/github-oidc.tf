@@ -284,6 +284,23 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
         ]
       },
 
+      # Velero state refresh
+
+      {
+        Sid    = "VeleroS3Read"
+        Effect = "Allow"
+
+        Action = [
+          "s3:GetBucketLocation",
+          "s3:GetBucketPublicAccessBlock",
+          "s3:GetBucketVersioning",
+          "s3:GetEncryptionConfiguration",
+          "s3:ListBucket"
+        ]
+
+        Resource = "arn:aws:s3:::bravo-eksv2-velero-backups"
+      },
+
       # VPC
 
       {
@@ -523,6 +540,18 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
 
       # Secrets Manager
 
+      {
+        Sid    = "SecretsManagerRead"
+        Effect = "Allow"
+
+        Action = [
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetResourcePolicy",
+          "secretsmanager:ListSecretVersionIds"
+        ]
+
+        Resource = "*"
+      },
       {
         Sid    = "SecretsManagerManage"
         Effect = "Allow"
