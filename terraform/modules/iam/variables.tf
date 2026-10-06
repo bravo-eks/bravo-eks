@@ -161,3 +161,17 @@ variable "velero_backup_bucket_arn" {
   description = "ARN of the S3 bucket used by Velero for backups."
   type        = string
 }
+
+# KEDA
+
+variable "keda_namespace" {
+  description = "Kubernetes namespace used by KEDA."
+  type        = string
+  default     = "keda"
+}
+
+variable "keda_service_account_name" {
+  description = "Kubernetes ServiceAccount used by the KEDA operator."
+  type        = string
+  default     = "keda-operator"
+}
