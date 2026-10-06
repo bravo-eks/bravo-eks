@@ -35,9 +35,16 @@ type Order struct {
 }
 
 type CreateOrderRequest struct {
-	Items    []OrderItem `json:"items"`
-	Currency string      `json:"currency"`
-	Notes    string      `json:"notes,omitempty"`
+	Items         []OrderItem `json:"items"`
+	Currency      string      `json:"currency"`
+	Notes         string      `json:"notes,omitempty"`
+	RecipientName string      `json:"recipient_name"`
+	AddressLine1  string      `json:"address_line1"`
+	AddressLine2  string      `json:"address_line2,omitempty"`
+	City          string      `json:"city"`
+	Postcode      string      `json:"postcode"`
+	Country       string      `json:"country"`
+	WeightKg      float64     `json:"weight_kg"`
 }
 
 type OrderItem struct {
@@ -140,6 +147,15 @@ func migrate() {
 			created_at TIMESTAMP DEFAULT NOW(),
 			updated_at TIMESTAMP DEFAULT NOW()
 		)`,
+
+		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(255)`,
+		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS address_line1 TEXT`,
+		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS address_line2 TEXT`,
+		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS city VARCHAR(100)`,
+		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS postcode VARCHAR(20)`,
+		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS country VARCHAR(2) DEFAULT 'GB'`,
+		`ALTER TABLE orders ADD COLUMN IF NOT EXISTS weight_kg DECIMAL(8,2) DEFAULT 1.0`,
+
 		`CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)`,
 		`CREATE TABLE IF NOT EXISTS order_events (
@@ -233,6 +249,14 @@ func createOrder(w http.ResponseWriter, r *http.Request) {
 		currency = "GBP"
 	}
 
+	if strings.TrimSpace(req.Country) == "" {
+		req.Country = "GB"
+	}
+
+	if req.WeightKg <= 0 {
+		req.WeightKg = 1.0
+	}
+
 	itemsJSON, err := json.Marshal(req.Items)
 	if err != nil {
 		httpError(w, "failed to process order items", http.StatusInternalServerError)
@@ -248,11 +272,46 @@ func createOrder(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 
 	var orderID int
+	// err = tx.QueryRowContext(
+	// 	r.Context(),
+	// 	`INSERT INTO orders (customer_id, status, items, total, currency, notes)
+	// 	 VALUES ($1, 'pending', $2, $3, $4, $5) RETURNING id`,
+	// 	customerID, itemsJSON, total, currency, req.Notes,
+	// ).Scan(&orderID)
 	err = tx.QueryRowContext(
 		r.Context(),
-		`INSERT INTO orders (customer_id, status, items, total, currency, notes)
-		 VALUES ($1, 'pending', $2, $3, $4, $5) RETURNING id`,
-		customerID, itemsJSON, total, currency, req.Notes,
+		`INSERT INTO orders (
+				customer_id,
+				status,
+				items,
+				total,
+				currency,
+				notes,
+				recipient_name,
+				address_line1,
+				address_line2,
+				city,
+				postcode,
+				country,
+				weight_kg
+			)
+			VALUES (
+				$1, 'pending', $2, $3, $4, $5,
+				$6, $7, $8, $9, $10, $11, $12
+			)
+			RETURNING id`,
+		customerID,
+		itemsJSON,
+		total,
+		currency,
+		req.Notes,
+		req.RecipientName,
+		req.AddressLine1,
+		req.AddressLine2,
+		req.City,
+		req.Postcode,
+		req.Country,
+		req.WeightKg,
 	).Scan(&orderID)
 
 	if err != nil {
@@ -391,12 +450,52 @@ func handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 
 	// Get current status
-	var currentStatus string
+	// var currentStatus string
+	// err = tx.QueryRowContext(
+	// 	r.Context(),
+	// 	"SELECT status FROM orders WHERE id = $1 FOR UPDATE",
+	// 	req.OrderID,
+	// ).Scan(&currentStatus)
+	var (
+		currentStatus string
+		customerID    string
+		recipientName string
+		addressLine1  string
+		addressLine2  string
+		city          string
+		postcode      string
+		country       string
+		weightKg      float64
+	)
+
 	err = tx.QueryRowContext(
 		r.Context(),
-		"SELECT status FROM orders WHERE id = $1 FOR UPDATE",
+		`SELECT
+		status,
+		customer_id,
+		COALESCE(recipient_name, ''),
+		COALESCE(address_line1, ''),
+		COALESCE(address_line2, ''),
+		COALESCE(city, ''),
+		COALESCE(postcode, ''),
+		COALESCE(country, 'GB'),
+		COALESCE(weight_kg, 1.0)
+	 FROM orders
+	 WHERE id = $1
+	 FOR UPDATE`,
 		req.OrderID,
-	).Scan(&currentStatus)
+	).Scan(
+		&currentStatus,
+		&customerID,
+		&recipientName,
+		&addressLine1,
+		&addressLine2,
+		&city,
+		&postcode,
+		&country,
+		&weightKg,
+	)
+
 	if err == sql.ErrNoRows {
 		httpError(w, "order not found", http.StatusNotFound)
 		return
@@ -456,10 +555,22 @@ func handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Publish event
+	// if err := publishEvent(r.Context(), "order.status_changed", map[string]interface{}{
+	// 	"order_id":   req.OrderID,
+	// 	"old_status": currentStatus,
+	// 	"new_status": req.NewStatus,
 	if err := publishEvent(r.Context(), "order.status_changed", map[string]interface{}{
-		"order_id":   req.OrderID,
-		"old_status": currentStatus,
-		"new_status": req.NewStatus,
+		"order_id":       req.OrderID,
+		"customer_id":    customerID,
+		"old_status":     currentStatus,
+		"new_status":     req.NewStatus,
+		"recipient_name": recipientName,
+		"address_line1":  addressLine1,
+		"address_line2":  addressLine2,
+		"city":           city,
+		"postcode":       postcode,
+		"country":        country,
+		"weight_kg":      weightKg,
 	}); err != nil {
 		log.Printf("Failed to publish order.status_changed event for order %d: %v", req.OrderID, err)
 		httpError(w, "order updated but event publishing failed", http.StatusInternalServerError)

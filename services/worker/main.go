@@ -326,6 +326,9 @@ func (w *Worker) handleEvent(
 	case "shipment.created":
 		return w.handleShipmentCreated(ctx, event.Payload)
 
+	case "shipment.in_transit":
+		return w.handleShipmentInTransit(ctx, event.Payload)
+
 	case "shipment.delivered":
 		return w.handleShipmentDelivered(ctx, event.Payload)
 
@@ -427,10 +430,10 @@ func (w *Worker) handleOrderCreated(
 		"channel":   "email",
 		"template":  "order_confirmed",
 		"data": map[string]interface{}{
-			"OrderID":     orderID,
+			"OrderID":      orderID,
 			"CustomerName": customerID,
-			"Currency":    currency,
-			"Total":       total,
+			"Currency":     currency,
+			"Total":        total,
 		},
 	}
 
@@ -444,20 +447,20 @@ func (w *Worker) handleOrderCreated(
 		return fmt.Errorf("send order confirmation: %w", err)
 	}
 
-	log.Printf("order.created: confirming order %d", orderID)
+	// log.Printf("order.created: confirming order %d", orderID)
 
-	if err := w.putJSON(
-		ctx,
-		w.services.Order,
-		"/status",
-		map[string]interface{}{
-			"order_id":   orderID,
-			"new_status": "confirmed",
-		},
-		nil,
-	); err != nil {
-		return fmt.Errorf("confirm order: %w", err)
-	}
+	// if err := w.putJSON(
+	// 	ctx,
+	// 	w.services.Order,
+	// 	"/status",
+	// 	map[string]interface{}{
+	// 		"order_id":   orderID,
+	// 		"new_status": "confirmed",
+	// 	},
+	// 	nil,
+	// ); err != nil {
+	// 	return fmt.Errorf("confirm order: %w", err)
+	// }
 
 	return nil
 }
@@ -476,7 +479,31 @@ func (w *Worker) handleOrderStatusChanged(
 		return err
 	}
 
+	// switch newStatus {
+	// case "processing":
+	// 	return w.createShipment(ctx, payload, orderID)
+
+	// case "shipped":
+	// 	trackingNumber := stringValue(payload, "tracking_number", "")
+
 	switch newStatus {
+	case "confirmed":
+		log.Printf(
+			"order.status_changed: advancing order %d to processing",
+			orderID,
+		)
+
+		return w.putJSON(
+			ctx,
+			w.services.Order,
+			"/status",
+			map[string]interface{}{
+				"order_id":   orderID,
+				"new_status": "processing",
+			},
+			nil,
+		)
+
 	case "processing":
 		return w.createShipment(ctx, payload, orderID)
 
@@ -672,6 +699,32 @@ func (w *Worker) handlePaymentFailed(
 	return nil
 }
 
+// func (w *Worker) handleShipmentCreated(
+// 	ctx context.Context,
+// 	payload map[string]interface{},
+// ) error {
+// 	orderID, err := requiredInt(payload, "order_id")
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	log.Printf(
+// 		"shipment.created: updating order %d to processing",
+// 		orderID,
+// 	)
+
+// 	return w.putJSON(
+// 		ctx,
+// 		w.services.Order,
+// 		"/status",
+// 		map[string]interface{}{
+// 			"order_id":   orderID,
+// 			"new_status": "processing",
+// 		},
+// 		nil,
+// 	)
+// }
+
 func (w *Worker) handleShipmentCreated(
 	ctx context.Context,
 	payload map[string]interface{},
@@ -682,7 +735,24 @@ func (w *Worker) handleShipmentCreated(
 	}
 
 	log.Printf(
-		"shipment.created: updating order %d to processing",
+		"shipment.created: shipment created successfully for order %d",
+		orderID,
+	)
+
+	return nil
+}
+
+func (w *Worker) handleShipmentInTransit(
+	ctx context.Context,
+	payload map[string]interface{},
+) error {
+	orderID, err := requiredInt(payload, "order_id")
+	if err != nil {
+		return err
+	}
+
+	log.Printf(
+		"shipment.in_transit: updating order %d to shipped",
 		orderID,
 	)
 
@@ -692,7 +762,7 @@ func (w *Worker) handleShipmentCreated(
 		"/status",
 		map[string]interface{}{
 			"order_id":   orderID,
-			"new_status": "processing",
+			"new_status": "shipped",
 		},
 		nil,
 	)
