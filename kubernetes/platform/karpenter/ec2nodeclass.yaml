@@ -6,11 +6,6 @@ metadata:
 spec:
   role: bravo-dev-node-role
 
-  # Prefix delegation provides the pod IP capacity; keep kubelet below the
-  # EKS recommended ceiling for instances with fewer than 30 vCPUs.
-  kubelet:
-    maxPods: 110
-
   amiSelectorTerms:
     - alias: al2023@latest
 
