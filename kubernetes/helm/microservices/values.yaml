@@ -24,6 +24,16 @@ strategy:
 
 terminationGracePeriodSeconds: 30
 
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: workload
+              operator: In
+              values:
+                - application
+
 serviceAccount:
   create: false
   name: ""
