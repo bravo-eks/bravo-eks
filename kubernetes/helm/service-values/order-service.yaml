@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: "304960797322.dkr.ecr.eu-west-2.amazonaws.com/order-service"
-  tag: "0c0ed2e7fb6adadef4a3bc1e4fe299dd9796127b"
+  tag: "cb2ac4dcb5e71810f153e9bb47941e020622f687"
   pullPolicy: IfNotPresent
 
 ports:

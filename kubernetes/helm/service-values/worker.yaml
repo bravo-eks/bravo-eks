@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: "304960797322.dkr.ecr.eu-west-2.amazonaws.com/worker"
-  tag: "2114c490647781ecacbfd0444ad4a4cebad6c321"
+  tag: "cb2ac4dcb5e71810f153e9bb47941e020622f687"
   pullPolicy: IfNotPresent
 
 ports:
