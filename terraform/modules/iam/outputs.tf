@@ -79,3 +79,8 @@ output "karpenter_controller_role_name" {
   description = "Name of the Karpenter controller IAM role."
   value       = aws_iam_role.karpenter_controller.name
 }
+
+output "velero_role_arn" {
+  description = "ARN of the IAM role assumed by Velero using IRSA."
+  value       = aws_iam_role.velero.arn
+}

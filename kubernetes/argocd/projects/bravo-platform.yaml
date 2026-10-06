@@ -17,6 +17,8 @@ spec:
     - public.ecr.aws/karpenter
     - https://github.com/kubernetes-sigs/gateway-api.git
     - https://kubernetes-sigs.github.io/metrics-server/
+    - https://vmware-tanzu.github.io/helm-charts
+    - https://prometheus-community.github.io/helm-charts
 
   destinations:
     - namespace: argocd
@@ -38,6 +40,12 @@ spec:
       server: https://kubernetes.default.svc
 
     - namespace: kube-system
+      server: https://kubernetes.default.svc
+
+    - namespace: velero
+      server: https://kubernetes.default.svc
+
+    - namespace: monitoring
       server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:

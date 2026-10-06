@@ -144,3 +144,20 @@ variable "external_dns_service_account_name" {
   type        = string
   default     = "external-dns"
 }
+
+variable "velero_namespace" {
+  description = "Kubernetes namespace where Velero is deployed."
+  type        = string
+  default     = "velero"
+}
+
+variable "velero_service_account_name" {
+  description = "Kubernetes service account used by Velero."
+  type        = string
+  default     = "velero"
+}
+
+variable "velero_backup_bucket_arn" {
+  description = "ARN of the S3 bucket used by Velero for backups."
+  type        = string
+}

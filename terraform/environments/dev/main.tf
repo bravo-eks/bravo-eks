@@ -82,6 +82,19 @@ module "iam" {
 
   external_secrets_secret_arns = [
     module.rds.master_user_secret_arn,
-    aws_secretsmanager_secret.runtime.arn
+    aws_secretsmanager_secret.runtime.arn,
+    "arn:aws:secretsmanager:eu-west-2:304960797322:secret:bravo/dev/*/database-*"
   ]
+  velero_backup_bucket_arn = module.velero.bucket_arn
+}
+
+module "velero" {
+  source = "../../modules/velero"
+
+  bucket_name = "bravo-eksv2-velero-backups"
+
+  tags = {
+    Environment = "dev"
+    Project     = "bravo-eksv2"
+  }
 }

@@ -124,8 +124,6 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
     "s3:Get*",
     "s3:List*"
   ]
-
-
         Resource = [
           aws_s3_bucket.terraform_state.arn,
           "${aws_s3_bucket.terraform_state.arn}/*"

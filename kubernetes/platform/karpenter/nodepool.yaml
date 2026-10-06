@@ -44,6 +44,13 @@ spec:
           values:
             - "3"
 
+        - key: karpenter.k8s.aws/instance-size
+          operator: NotIn
+          values:
+            - nano
+            - micro
+            - small
+
       expireAfter: 720h
       terminationGracePeriod: 5m
 
