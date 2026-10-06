@@ -97,3 +97,39 @@ networkPolicy:
   allowPostgres: false
   allowRedis: false
   allowExternalHTTPS: true
+
+keda:
+  enabled: true
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  pollingInterval: 30
+  cooldownPeriod: 300
+
+  authentication:
+    provider: aws-eks
+
+  sqs:
+    queueURL: "https://sqs.eu-west-2.amazonaws.com/304960797322/bravo-dev-events"
+    awsRegion: "eu-west-2"
+    queueLength: "5"
+
+  schedule:
+    timezone: Europe/London
+    daytime:
+      enabled: true
+      start: "0 6 * * *"
+      end: "0 0 * * *"
+      desiredReplicas: "2"
+    boxingDay:
+      enabled: true
+      start: "0 0 26 12 *"
+      end: "0 0 27 12 *"
+      desiredReplicas: "5"
+
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60

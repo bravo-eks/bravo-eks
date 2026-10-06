@@ -1,0 +1,54 @@
+{{- if .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ include "bravo-app.fullname" . }}-aws
+  labels:
+    {{- include "bravo-app.labels" . | nindent 4 }}
+spec:
+  podIdentity:
+    provider: {{ .Values.keda.authentication.provider }}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "bravo-app.fullname" . }}
+  labels:
+    {{- include "bravo-app.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: {{ include "bravo-app.fullname" . }}
+  minReplicaCount: {{ .Values.keda.minReplicaCount }}
+  maxReplicaCount: {{ .Values.keda.maxReplicaCount }}
+  pollingInterval: {{ .Values.keda.pollingInterval }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          {{- toYaml .Values.keda.behavior.scaleDown | nindent 10 }}
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: {{ include "bravo-app.fullname" . }}-aws
+      metadata:
+        queueURL: {{ .Values.keda.sqs.queueURL | quote }}
+        awsRegion: {{ .Values.keda.sqs.awsRegion | quote }}
+        queueLength: {{ .Values.keda.sqs.queueLength | quote }}
+    {{- if .Values.keda.schedule.daytime.enabled }}
+    - type: cron
+      metadata:
+        timezone: {{ .Values.keda.schedule.timezone | quote }}
+        start: {{ .Values.keda.schedule.daytime.start | quote }}
+        end: {{ .Values.keda.schedule.daytime.end | quote }}
+        desiredReplicas: {{ .Values.keda.schedule.daytime.desiredReplicas | quote }}
+    {{- end }}
+    {{- if .Values.keda.schedule.boxingDay.enabled }}
+    - type: cron
+      metadata:
+        timezone: {{ .Values.keda.schedule.timezone | quote }}
+        start: {{ .Values.keda.schedule.boxingDay.start | quote }}
+        end: {{ .Values.keda.schedule.boxingDay.end | quote }}
+        desiredReplicas: {{ .Values.keda.schedule.boxingDay.desiredReplicas | quote }}
+    {{- end }}
+{{- end }}
