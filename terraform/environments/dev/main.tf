@@ -72,11 +72,13 @@ module "iam" {
   cluster_name            = module.eks.cluster_name
   karpenter_node_role_arn = module.eks.node_role_arn
 
-  kubernetes_namespace          = var.kubernetes_namespace
-  order_service_account_name    = var.order_service_account_name
-  payment_service_account_name  = var.payment_service_account_name
-  shipping_service_account_name = var.shipping_service_account_name
-  worker_service_account_name   = var.worker_service_account_name
+  kubernetes_namespace                = var.kubernetes_namespace
+  order_service_account_name          = var.order_service_account_name
+  payment_service_account_name        = var.payment_service_account_name
+  shipping_service_account_name       = var.shipping_service_account_name
+  worker_service_account_name         = var.worker_service_account_name
+  notification_service_account_name   = var.notification_service_account_name
+  notification_ses_email_identity_arn = module.notification.ses_email_identity_arn
 
   sqs_queue_arns = [module.sqs.queue_arn]
 
@@ -114,4 +116,9 @@ module "monitoring" {
   alert_email = var.alert_email
 
   tags = local.tags
+}
+module "notification" {
+  source = "../../modules/notification"
+
+  ses_email_identity = var.notification_ses_email_identity
 }

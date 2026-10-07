@@ -50,6 +50,12 @@ envFrom:
 configMap:
   enabled: false
 
+serviceAccount:
+  create: true
+  name: notification-service
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-notification-service"
+
 migration:
   enabled: true
 
