@@ -106,7 +106,7 @@ keda:
   cooldownPeriod: 300
 
   authentication:
-    provider: aws-eks
+    provider: aws
 
   sqs:
     queueURL: "https://sqs.eu-west-2.amazonaws.com/304960797322/bravo-dev-events"
