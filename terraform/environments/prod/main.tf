@@ -79,6 +79,14 @@ module "rds" {
   deletion_protection   = var.rds_deletion_protection
 }
 
+module "velero" {
+  source = "../../modules/velero"
+
+  bucket_name = "bravo-eks-prod-velero-backups"
+
+  tags = var.tags
+}
+
 module "monitoring" {
   source = "../../modules/monitoring"
 
