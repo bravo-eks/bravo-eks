@@ -84,3 +84,12 @@ output "velero_role_arn" {
   description = "ARN of the IAM role assumed by Velero using IRSA."
   value       = aws_iam_role.velero.arn
 }
+output "notification_service_role_arn" {
+  description = "ARN of the IAM role assumed by the notification-service Kubernetes ServiceAccount."
+  value       = aws_iam_role.notification_service.arn
+}
+
+output "notification_service_role_name" {
+  description = "Name of the notification-service IAM role."
+  value       = aws_iam_role.notification_service.name
+}

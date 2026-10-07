@@ -688,3 +688,88 @@ resource "aws_iam_role_policy_attachment" "keda_sqs" {
   role       = aws_iam_role.keda.name
   policy_arn = aws_iam_policy.keda_sqs.arn
 }
+
+data "aws_iam_policy_document" "notification_service_assume_role" {
+  statement {
+    sid    = "AllowNotificationServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.kubernetes_namespace}:${var.notification_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "notification_service" {
+  name               = "${var.name_prefix}-notification-service"
+  description        = "IAM role assumed by the notification-service Kubernetes workload using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.notification_service_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-notification-service"
+      Component = "notification-service"
+    }
+  )
+}
+
+data "aws_iam_policy_document" "notification_service_ses" {
+  count = var.notification_ses_email_identity_arn == null ? 0 : 1
+
+  statement {
+    sid    = "AllowSendEmail"
+    effect = "Allow"
+
+    actions = [
+      "ses:SendEmail",
+      "ses:SendRawEmail"
+    ]
+
+    resources = [
+      var.notification_ses_email_identity_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "notification_service_ses" {
+  count = var.notification_ses_email_identity_arn == null ? 0 : 1
+
+  name        = "${var.name_prefix}-notification-service-ses"
+  description = "Allow notification-service to send email through Amazon SES."
+
+  policy = data.aws_iam_policy_document.notification_service_ses[0].json
+}
+
+resource "aws_iam_role_policy_attachment" "notification_service_ses" {
+  count = var.notification_ses_email_identity_arn == null ? 0 : 1
+
+  role       = aws_iam_role.notification_service.name
+  policy_arn = aws_iam_policy.notification_service_ses[0].arn
+}

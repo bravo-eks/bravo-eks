@@ -175,3 +175,16 @@ variable "keda_service_account_name" {
   type        = string
   default     = "keda-operator"
 }
+
+variable "notification_service_account_name" {
+  description = "Kubernetes ServiceAccount name used by notification-service."
+  type        = string
+  default     = "notification-service"
+}
+
+variable "notification_ses_email_identity_arn" {
+  description = "ARN of the SES identity notification-service is allowed to use."
+  type        = string
+  default     = null
+  nullable    = true
+}
