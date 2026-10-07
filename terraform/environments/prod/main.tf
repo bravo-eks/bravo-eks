@@ -32,8 +32,6 @@ module "eks" {
   tags = var.tags
 }
 
-
-
 # IAM
 module "iam" {
   source = "../../modules/iam"
@@ -61,7 +59,7 @@ module "iam" {
   external_secrets_secret_arns = [module.rds.master_user_secret_arn]
 
   velero_backup_bucket_arn = module.velero.bucket_arn
-    tags                         = var.tags
+  tags                     = var.tags
 }
 
 # RDS
