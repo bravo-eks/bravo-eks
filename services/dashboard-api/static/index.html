@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="description" content="Bravo Orders fulfillment operations console" />
+  <meta name="description" content="Shop Bravo Orders or manage fulfillment operations" />
   <title>Bravo Orders</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +11,153 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app-shell">
+  <section class="entry-page landing-page" id="landingPage">
+    <header class="entry-header">
+      <a class="entry-brand" href="#home" aria-label="Bravo Orders home">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span class="brand-copy"><strong>bravo</strong><span>orders</span></span>
+      </a>
+      <span class="landing-context">Customer Portal <i></i> Admin Workspace</span>
+    </header>
+    <main class="landing-content">
+      <div class="entry-options">
+        <article class="entry-option customer-option">
+          <span class="entry-option-icon" aria-hidden="true">↗</span>
+          <p class="eyebrow">CUSTOMER PORTAL</p>
+          <h1>Shop, order,<br>and track.</h1>
+          <p>Find what you need, place an order, and follow its progress from one convenient place.</p>
+          <a class="primary-btn landing-cta" href="#customer-login">Customer sign in <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="entry-option admin-option">
+          <span class="entry-option-icon" aria-hidden="true">⌁</span>
+          <p class="eyebrow">ADMIN WORKSPACE</p>
+          <h1>Run your<br>operations.</h1>
+          <p>Manage orders, inventory, shipments, and payments across your fulfillment operation.</p>
+          <a class="primary-btn landing-cta" href="#admin-login">Admin sign in <span aria-hidden="true">→</span></a>
+        </article>
+      </div>
+    </main>
+    <footer class="entry-footer"><span>Bravo Orders</span><span>Customer Portal <i></i> Admin Workspace</span></footer>
+  </section>
+
+  <section class="entry-page login-page" id="loginPage" hidden>
+    <header class="entry-header">
+      <a class="entry-brand" href="#home" aria-label="Bravo Orders home">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span class="brand-copy"><strong>bravo</strong><span>orders</span></span>
+      </a>
+      <a class="entry-back" href="#home">← Back to home</a>
+    </header>
+    <main class="login-content">
+      <div class="login-card">
+        <p class="eyebrow">ADMIN WORKSPACE</p>
+        <h1>Welcome back</h1>
+        <p class="login-intro">Sign in to manage Bravo Orders operations.</p>
+        <form id="loginForm">
+          <label>Email address<input id="loginEmail" type="email" name="email" autocomplete="username" placeholder="you@company.com" required /></label>
+          <label>Password<input id="loginPassword" type="password" name="password" autocomplete="current-password" placeholder="Enter your password" required /></label>
+          <p class="login-error" id="loginError" role="alert" hidden></p>
+          <button class="primary-btn login-submit" id="loginSubmit" type="submit">Sign in to admin <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="login-security"><span aria-hidden="true">●</span> Secure administrator access</p>
+      </div>
+    </main>
+    <footer class="entry-footer"><span>Bravo Orders</span><span>Administrator sign in</span></footer>
+  </section>
+
+  <section class="entry-page login-page" id="customerLoginPage" hidden>
+    <header class="entry-header">
+      <a class="entry-brand" href="#home" aria-label="Bravo Orders home">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span class="brand-copy"><strong>bravo</strong><span>orders</span></span>
+      </a>
+      <a class="entry-back" href="#home">← Back to home</a>
+    </header>
+    <main class="login-content">
+      <div class="login-card">
+        <p class="eyebrow">CUSTOMER PORTAL</p>
+        <h1>Welcome back</h1>
+        <p class="login-intro">Sign in to shop and keep up with your orders.</p>
+        <form id="customerLoginForm">
+          <label>Email address<input id="customerLoginEmail" type="email" name="email" autocomplete="username" placeholder="you@example.com" required /></label>
+          <label>Password<input id="customerLoginPassword" type="password" name="password" autocomplete="current-password" placeholder="Enter your password" required /></label>
+          <p class="login-error" id="customerLoginError" role="alert" hidden></p>
+          <button class="primary-btn login-submit" type="submit">Customer sign in <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="login-security"><span aria-hidden="true">●</span> Customer access</p>
+      </div>
+    </main>
+    <footer class="entry-footer"><span>Bravo Orders</span><span>Customer sign in</span></footer>
+  </section>
+
+  <div class="customer-portal" id="customerPortal" hidden>
+    <header class="customer-header">
+      <a class="entry-brand" href="#customer-shop" aria-label="Bravo Orders shop">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span class="brand-copy"><strong>bravo</strong><span>orders</span></span>
+      </a>
+      <nav class="customer-nav" aria-label="Customer navigation">
+        <button class="customer-nav-link active" type="button" data-customer-view="shop">Shop</button>
+        <button class="customer-nav-link" type="button" data-customer-view="orders">My Orders</button>
+      </nav>
+      <div class="customer-header-actions">
+        <button class="basket-control" id="basketControl" type="button">Basket <span id="basketCount">0</span></button>
+        <div class="customer-account"><span>Signed in as</span><strong>customer@bravoorders.com</strong></div>
+        <button class="customer-logout" id="customerLogoutBtn" type="button">Logout</button>
+      </div>
+    </header>
+    <main class="customer-main">
+      <section class="customer-view" id="customerShopView">
+        <div class="customer-page-heading"><div><p class="eyebrow">BRAVO ORDERS SHOP</p><h1>Find your next favourite.</h1><p>Browse the latest products and add them to your basket.</p></div><button class="secondary-btn" id="refreshProductsBtn" type="button">↻ Refresh products</button></div>
+        <p class="customer-product-message" id="customerProductMessage" role="status" hidden></p>
+        <div class="customer-product-grid" id="customerProductGrid"></div>
+      </section>
+      <section class="customer-view" id="customerBasketView" hidden>
+        <div class="customer-page-heading"><div><p class="eyebrow">YOUR BASKET</p><h1>Review your picks.</h1><p>Update quantities or remove items before checkout.</p></div><button class="secondary-btn" type="button" data-customer-view="shop">← Continue shopping</button></div>
+        <p class="customer-product-message" id="basketUpdateMessage" role="status" hidden></p><div class="customer-basket-layout"><div class="customer-basket-items" id="customerBasketItems"></div><aside class="basket-summary"><p class="eyebrow">ORDER SUMMARY</p><div class="basket-subtotal"><span>Subtotal</span><strong id="basketSubtotal">£0.00</strong></div><p class="basket-note">Delivery and any applicable taxes are calculated at checkout.</p><button class="primary-btn checkout-btn" id="checkoutBtn" type="button">Proceed to checkout <span aria-hidden="true">→</span></button></aside></div>
+      </section>
+      <section class="customer-view" id="customerCheckoutView" hidden>
+        <div class="customer-page-heading"><div><p class="eyebrow">SECURE CHECKOUT</p><h1>Almost yours.</h1><p>Confirm your details and review your order.</p></div><button class="secondary-btn" type="button" data-customer-view="basket">← Back to basket</button></div>
+        <p class="checkout-error" id="checkoutError" role="alert" hidden></p>
+        <div class="checkout-layout">
+          <form class="checkout-details" id="checkoutForm">
+            <div class="checkout-section-heading"><span>01</span><div><h2>Customer details</h2><p>Where should we send your order?</p></div></div>
+            <label>Full name<input id="checkoutName" name="name" autocomplete="name" required /></label>
+            <label>Email address<input id="checkoutEmail" name="email" type="email" autocomplete="email" value="customer@bravoorders.com" required /></label>
+            <label>Address<input id="checkoutAddress" name="address" autocomplete="street-address" required /></label>
+            <div class="checkout-form-row"><label>City<input id="checkoutCity" name="city" autocomplete="address-level2" required /></label><label>Postcode<input id="checkoutPostcode" name="postcode" autocomplete="postal-code" required /></label></div>
+            <label>Country<input id="checkoutCountry" name="country" autocomplete="country-name" required /></label>
+            <button class="primary-btn place-order-btn" id="placeOrderBtn" type="submit">Place order <span aria-hidden="true">→</span></button>
+          </form>
+          <aside class="checkout-review">
+            <p class="eyebrow">ORDER SUMMARY</p>
+            <div id="checkoutSummaryItems"></div>
+            <div class="checkout-total-row"><span>Subtotal</span><strong id="checkoutSubtotal">£0.00</strong></div>
+            <div class="checkout-total-row final"><span>Total</span><strong id="checkoutTotal">£0.00</strong></div>
+            <p class="checkout-note">No delivery charges or taxes are added at this stage.</p>
+          </aside>
+        </div>
+      </section>
+      <section class="customer-view" id="customerConfirmationView" hidden>
+        <div class="order-confirmation">
+          <div class="confirmation-mark" aria-hidden="true">✓</div>
+          <p class="eyebrow">ORDER CONFIRMATION</p>
+          <h1>Your order is placed.</h1>
+          <p class="confirmation-intro">Thank you for shopping with Bravo Orders. We’ve received your order.</p>
+          <div class="confirmation-details" id="confirmationDetails"></div>
+          <div class="confirmation-actions"><button class="primary-btn" type="button" data-customer-view="shop">Continue shopping</button><button class="secondary-btn" type="button" data-customer-view="orders">View my orders</button></div>
+        </div>
+      </section>
+      <section class="customer-view" id="customerOrdersView" hidden>
+        <div class="customer-page-heading"><div><p class="eyebrow">YOUR ACCOUNT</p><h1>My Orders</h1><p>See your orders and their latest status.</p></div><button class="secondary-btn" id="refreshCustomerOrdersBtn" type="button">↻ Refresh status</button></div>
+        <p class="customer-orders-message" id="customerOrdersMessage" role="alert" hidden></p>
+        <div class="customer-orders-layout"><div class="customer-order-list" id="customerOrderList"></div><section class="customer-order-detail" id="customerOrderDetail" hidden></section></div>
+      </section>
+    </main>
+    <footer class="customer-footer"><span>Bravo Orders</span><span>Made for a better way to order.</span></footer>
+  </div>
+
+  <div class="app-shell" id="appShell" hidden>
     <aside class="sidebar" id="sidebar">
       <div class="brand-row">
         <div class="brand-mark" aria-hidden="true"><span>B</span></div>
@@ -21,16 +167,17 @@
       <nav class="nav" aria-label="Main navigation">
         <p class="nav-label">Workspace</p>
         <button class="nav-item active" data-view="overview"><span class="nav-icon">⌂</span><span class="nav-text">Overview</span></button>
-        <button class="nav-item" data-view="orders"><span class="nav-icon">▣</span><span class="nav-text">Orders</span><span class="nav-count">24</span></button>
-        <button class="nav-item" data-view="inventory"><span class="nav-icon">◇</span><span class="nav-text">Inventory</span><span class="nav-dot warning"></span></button>
+        <button class="nav-item" data-view="orders"><span class="nav-icon">▣</span><span class="nav-text">Orders</span><span class="nav-count" id="ordersNavCount">0</span></button>
+        <button class="nav-item" data-view="inventory"><span class="nav-icon">◇</span><span class="nav-text">Inventory</span></button>
         <button class="nav-item" data-view="shipments"><span class="nav-icon">➜</span><span class="nav-text">Shipments</span></button>
         <button class="nav-item" data-view="payments"><span class="nav-icon">¤</span><span class="nav-text">Payments</span></button>
+        <button class="nav-item" data-view="refunds"><span class="nav-icon">↩</span><span class="nav-text">Refund Requests</span><span class="nav-count" id="refundRequestCount" hidden>0</span></button>
         <p class="nav-label">Operations</p>
         <button class="nav-item" data-view="services"><span class="nav-icon">⌁</span><span class="nav-text">Service health</span><span class="nav-dot healthy"></span></button>
       </nav>
       <div class="sidebar-footer">
         <div class="env-card"><span class="env-dot"></span><div><strong>Production</strong><small>Amazon EKS</small></div></div>
-        <div class="user-card"><div class="avatar">SN</div><div class="user-copy"><strong>Platform Admin</strong><small>bravoorders.com</small></div><span>⋯</span></div>
+        <div class="user-card"><div class="avatar">BO</div><div class="user-copy"><strong>Platform Admin</strong><small>Bravo Orders</small></div><button class="signout-btn" id="signOutBtn" type="button">Sign out</button></div>
       </div>
     </aside>
 
@@ -39,7 +186,6 @@
         <div><button class="mobile-menu icon-button" id="mobileMenu">☰</button><span class="breadcrumb">Operations / <b id="crumb">Overview</b></span></div>
         <div class="top-actions">
           <label class="global-search"><span>⌕</span><input id="globalSearch" placeholder="Search orders, SKUs, tracking…"/><kbd>⌘ K</kbd></label>
-          <button class="icon-button notification-btn" aria-label="Notifications">♢<span></span></button>
           <button class="primary-btn" id="newOrderBtn">＋ New order</button>
         </div>
       </header>
@@ -64,14 +210,16 @@
 
         <section class="view" id="payments-view"><div class="page-heading"><div><p class="eyebrow">FINANCIAL OPERATIONS</p><h1>Payments</h1><p>Charges, refunds, and transaction activity.</p></div></div><div class="mini-kpis" id="paymentKpis"></div><div class="panel"><div class="panel-head"><div><h2>Payment ledger</h2><p>Recent financial entries</p></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Payment</th><th>Type</th><th>Description</th><th>Debit</th><th>Credit</th><th>Created</th></tr></thead><tbody id="paymentsTable"></tbody></table></div></div></section>
 
+        <section class="view refunds-view" id="refunds-view"><div class="page-heading"><div><p class="eyebrow">PAYMENT OPERATIONS</p><h1>Refund Requests</h1><p>Review customer refund requests and record an outcome.</p></div><button class="secondary-btn" id="refundRequestsRefreshBtn">↻ Refresh</button></div><div class="mini-kpis" id="refundRequestKpis"></div><div class="panel"><div class="panel-head"><div><h2>Customer requests</h2><p>Persisted refund workflow status from payments</p></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Request</th><th>Order</th><th>Customer</th><th>Amount</th><th>Reason</th><th>Status</th><th>Requested</th><th>Actions</th></tr></thead><tbody id="refundRequestsTable"></tbody></table></div></div></section>
+
         <section class="view" id="services-view"><div class="page-heading"><div><p class="eyebrow">PLATFORM OPERATIONS</p><h1>Service health</h1><p>Health signals for the nine services powering Bravo Orders.</p></div><span class="live-pill"><i></i> Cluster healthy</span></div><div class="service-grid" id="serviceGrid"></div><div class="panel architecture-panel"><div class="panel-head"><div><h2>Request path</h2><p>High-level production traffic flow</p></div></div><div class="architecture-flow"><span>bravoorders.com</span><b>→</b><span>AWS Load Balancer</span><b>→</b><span>Traefik / bravo-gateway</span><b>→</b><span>Dashboard API</span><b>→</b><span>API Gateway</span><b>→</b><span>Domain services</span><b>→</b><span>PostgreSQL + SQS</span></div></div></section>
       </div>
     </main>
-  </div>
 
   <div class="drawer-backdrop" id="drawerBackdrop"></div><aside class="drawer" id="orderDrawer"><div class="drawer-head"><div><p class="eyebrow">ORDER DETAIL</p><h2 id="drawerTitle">Order #1042</h2></div><button class="icon-button" id="closeDrawer">×</button></div><div id="drawerContent"></div></aside>
   <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><div><p class="eyebrow">NEW ORDER</p><h2>Create an order</h2></div><button class="icon-button" id="closeModal">×</button></div><form id="orderForm"><label>Product<select id="productSelect"></select></label><div class="form-row"><label>Quantity<input id="quantityInput" type="number" min="1" value="1" /></label><label>Currency<select id="currencyInput"><option>GBP</option><option>USD</option><option>CAD</option></select></label></div><label>Recipient name<input id="recipientNameInput" required /></label><label>Address<input id="addressInput" required /></label><div class="form-row"><label>City<input id="cityInput" required /></label><label>Postcode<input id="postcodeInput" required /></label></div><label>Country<input id="countryInput" value="GB" maxlength="2" required /></label><label>Notes<textarea id="notesInput" rows="3" placeholder="Optional fulfillment notes"></textarea></label><div class="modal-actions"><button type="button" class="secondary-btn" id="cancelModal">Cancel</button><button type="submit" class="primary-btn">Create order</button></div></form></div></div>
   <div class="toast" id="toast"></div>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>

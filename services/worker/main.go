@@ -323,6 +323,9 @@ func (w *Worker) handleEvent(
 	case "payment.failed":
 		return w.handlePaymentFailed(ctx, event.Payload)
 
+	case "payment.refunded":
+		return w.handlePaymentRefunded(ctx, event.Payload)
+
 	case "shipment.created":
 		return w.handleShipmentCreated(ctx, event.Payload)
 
@@ -699,6 +702,65 @@ func (w *Worker) handlePaymentFailed(
 	return nil
 }
 
+func (w *Worker) handlePaymentRefunded(
+	ctx context.Context,
+	payload map[string]interface{},
+) error {
+	orderID, err := requiredInt(payload, "order_id")
+	if err != nil {
+		return err
+	}
+
+	var order struct {
+		ID     int    `json:"id"`
+		Status string `json:"status"`
+	}
+	if err := w.getJSON(ctx, w.services.Order, fmt.Sprintf("/%d", orderID), &order); err != nil {
+		return fmt.Errorf("retrieve order %d after refund: %w", orderID, err)
+	}
+	if order.ID != orderID {
+		return fmt.Errorf("order service returned order %d while retrieving order %d", order.ID, orderID)
+	}
+
+	switch order.Status {
+	case "cancelled":
+		log.Printf("payment.refunded: order %d is already cancelled", orderID)
+		return nil
+	case "pending", "confirmed", "processing":
+		if err := w.putJSON(
+			ctx,
+			w.services.Order,
+			"/status",
+			map[string]interface{}{
+				"order_id":   orderID,
+				"new_status": "cancelled",
+			},
+			nil,
+		); err != nil {
+			var currentOrder struct {
+				ID     int    `json:"id"`
+				Status string `json:"status"`
+			}
+			if getErr := w.getJSON(ctx, w.services.Order, fmt.Sprintf("/%d", orderID), &currentOrder); getErr == nil && currentOrder.ID == orderID {
+				if currentOrder.Status == "cancelled" {
+					log.Printf("payment.refunded: order %d was cancelled by another event handler", orderID)
+					return nil
+				}
+				if currentOrder.Status != "pending" && currentOrder.Status != "confirmed" && currentOrder.Status != "processing" {
+					log.Printf("payment.refunded: order %d changed to non-cancellable status %q; leaving lifecycle unchanged", orderID, currentOrder.Status)
+					return nil
+				}
+			}
+			return fmt.Errorf("cancel order %d after refund: %w", orderID, err)
+		}
+		log.Printf("payment.refunded: cancelled order %d", orderID)
+		return nil
+	default:
+		log.Printf("payment.refunded: order %d has non-cancellable status %q; leaving lifecycle unchanged", orderID, order.Status)
+		return nil
+	}
+}
+
 // func (w *Worker) handleShipmentCreated(
 // 	ctx context.Context,
 // 	payload map[string]interface{},
@@ -873,6 +935,22 @@ func (w *Worker) putJSON(
 	)
 }
 
+func (w *Worker) getJSON(
+	ctx context.Context,
+	baseURL string,
+	path string,
+	response interface{},
+) error {
+	return w.doJSON(
+		ctx,
+		http.MethodGet,
+		baseURL,
+		path,
+		nil,
+		response,
+	)
+}
+
 func (w *Worker) doJSON(
 	ctx context.Context,
 	method string,
@@ -890,9 +968,13 @@ func (w *Worker) doJSON(
 
 	requestURL := baseURL + path
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("marshal request body: %w", err)
+	var bodyReader io.Reader
+	if payload != nil {
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("marshal request body: %w", err)
+		}
+		bodyReader = bytes.NewReader(body)
 	}
 
 	requestCtx, cancel := context.WithTimeout(
@@ -905,7 +987,7 @@ func (w *Worker) doJSON(
 		requestCtx,
 		method,
 		requestURL,
-		bytes.NewReader(body),
+		bodyReader,
 	)
 	if err != nil {
 		return fmt.Errorf("create HTTP request: %w", err)
