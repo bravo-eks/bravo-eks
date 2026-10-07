@@ -32,6 +32,8 @@ module "eks" {
   tags = var.tags
 }
 
+
+
 # IAM
 module "iam" {
   source = "../../modules/iam"
@@ -57,7 +59,9 @@ module "iam" {
   ]
 
   external_secrets_secret_arns = [module.rds.master_user_secret_arn]
-  tags                         = var.tags
+
+  velero_backup_bucket_arn = module.velero.bucket_arn
+    tags                         = var.tags
 }
 
 # RDS
@@ -75,4 +79,20 @@ module "rds" {
   instance_class        = var.rds_instance_class
   multi_az              = var.rds_multi_az
   deletion_protection   = var.rds_deletion_protection
+}
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  project_name = var.project_name
+  environment  = var.environment
+
+  rds_instance_identifier = module.rds.db_instance_id
+
+  sqs_queue_name = var.sqs_queue_name
+  sqs_dlq_name   = "${var.sqs_queue_name}-dlq"
+
+  alert_email = var.alert_email
+
+  tags = var.tags
 }

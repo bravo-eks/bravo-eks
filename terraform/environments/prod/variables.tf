@@ -150,3 +150,10 @@ variable "karpenter_service_account_name" {
   type        = string
   default     = "karpenter"
 }
+
+variable "alert_email" {
+  description = "Optional email address for CloudWatch alarm notifications."
+  type        = string
+  default     = null
+  nullable    = true
+}

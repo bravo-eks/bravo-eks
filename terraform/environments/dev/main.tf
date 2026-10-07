@@ -98,3 +98,20 @@ module "velero" {
     Project     = "bravo-eksv2"
   }
 }
+
+# Monitoring
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  project_name = var.project_name
+  environment  = var.environment
+
+  rds_instance_identifier = module.rds.db_instance_id
+
+  sqs_queue_name = "${local.name_prefix}-events"
+  sqs_dlq_name   = "${local.name_prefix}-events-dlq"
+
+  alert_email = var.alert_email
+
+  tags = local.tags
+}

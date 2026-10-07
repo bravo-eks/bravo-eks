@@ -100,3 +100,10 @@ variable "cluster_version" {
   type        = string
   default     = "1.33"
 }
+
+variable "alert_email" {
+  description = "Optional email address for CloudWatch alarm notifications."
+  type        = string
+  default     = null
+  nullable    = true
+}
