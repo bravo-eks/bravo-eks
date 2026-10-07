@@ -212,6 +212,31 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
         Resource = "*"
       },
       {
+        Sid    = "SNSRead"
+        Effect = "Allow"
+
+        Action = [
+          "sns:GetTopicAttributes",
+          "sns:ListTagsForResource"
+        ]
+
+        Resource = "*"
+      },
+      {
+        Sid    = "VeleroS3Read"
+        Effect = "Allow"
+
+        Action = [
+          "s3:GetBucketLocation",
+          "s3:GetBucketPublicAccessBlock",
+          "s3:GetBucketVersioning",
+          "s3:GetEncryptionConfiguration",
+          "s3:ListBucket"
+        ]
+
+        Resource = "arn:aws:s3:::bravo-eksv2-velero-backups"
+      },
+      {
         Sid    = "KMSRead"
         Effect = "Allow"
 
