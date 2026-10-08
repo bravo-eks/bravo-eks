@@ -41,7 +41,13 @@ readinessProbe:
     path: /healthz
     port: http
 
-env: []
+env:
+  - name: AWS_REGION
+    value: "eu-west-2"
+  - name: SES_FROM_EMAIL
+    value: "notifications@bravoorders.com"
+  - name: SES_REPLY_TO_EMAIL
+    value: "support@bravoorders.com"
 
 envFrom:
   - secretRef:
