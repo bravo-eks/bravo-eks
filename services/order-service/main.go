@@ -363,12 +363,13 @@ func createOrder(w http.ResponseWriter, r *http.Request) {
 func listOrders(w http.ResponseWriter, r *http.Request) {
 	customerID := r.Header.Get("X-User-Email")
 	status := r.URL.Query().Get("status")
+	allOrders := r.URL.Query().Get("all") == "true"
 
 	query := "SELECT id, customer_id, status, items, total, currency, notes, created_at, updated_at FROM orders WHERE 1=1"
 	args := []interface{}{}
 	argN := 1
 
-	if customerID != "" {
+	if customerID != "" && !allOrders {
 		query += fmt.Sprintf(" AND customer_id = $%d", argN)
 		args = append(args, customerID)
 		argN++

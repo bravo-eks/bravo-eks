@@ -76,6 +76,10 @@ jobs:
               - 'services/shipping-service/**'
               - '.github/workflows/build.yaml'
 
+            support-service:
+              - 'services/support-service/**'
+              - '.github/workflows/build.yaml'
+
             worker:
               - 'services/worker/**'
               - '.github/workflows/build.yaml'
@@ -87,7 +91,7 @@ jobs:
           CHANGED_SERVICES: ${{ steps.filter.outputs.changes }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo 'services=["api-gateway","dashboard-api","inventory-service","notification-service","order-service","payment-service","scheduler","shipping-service","worker"]' >> "$GITHUB_OUTPUT"
+            echo 'services=["api-gateway","dashboard-api","inventory-service","notification-service","order-service","payment-service","scheduler","shipping-service","support-service","worker"]' >> "$GITHUB_OUTPUT"
           else
             echo "services=$CHANGED_SERVICES" >> "$GITHUB_OUTPUT"
           fi

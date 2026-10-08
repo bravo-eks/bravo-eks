@@ -26,8 +26,11 @@ system_node_min_size       = 1
 system_node_max_size       = 3
 
 # IAM
-kubernetes_namespace          = "default"
-order_service_account_name    = "order-service"
-payment_service_account_name  = "payment-service"
-shipping_service_account_name = "shipping-service"
-worker_service_account_name   = "worker"
+kubernetes_namespace              = "default"
+order_service_account_name        = "order-service"
+payment_service_account_name      = "payment-service"
+shipping_service_account_name     = "shipping-service"
+worker_service_account_name       = "worker"
+notification_service_account_name = "notification-service"
+support_service_account_name      = "support-service"
+support_email_bucket_name         = "bravo-prod-support-email"

@@ -22,7 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 type Config struct {
@@ -154,6 +154,7 @@ func loadConfig() Config {
 
 func (a *App) migrate(ctx context.Context) error {
 	migrations := []string{
+
 		`CREATE TABLE IF NOT EXISTS support.tickets (
 			id BIGSERIAL PRIMARY KEY,
 			customer_email TEXT NOT NULL,
@@ -193,6 +194,14 @@ func (a *App) migrate(ctx context.Context) error {
 
 		`CREATE INDEX IF NOT EXISTS idx_support_messages_message_id
 			ON support.messages(message_id)`,
+
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_support_messages_s3_key
+			ON support.messages(s3_key)
+			WHERE s3_key IS NOT NULL`,
+
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_support_messages_message_id_unique
+			ON support.messages(message_id)
+			WHERE message_id IS NOT NULL AND message_id <> ''`,
 	}
 
 	for _, migration := range migrations {
@@ -302,6 +311,15 @@ func (a *App) storeInboundEmail(
 	}
 	defer tx.Rollback()
 
+	duplicate, err := inboundEmailAlreadyStored(ctx, tx, s3Key, email.MessageID)
+	if err != nil {
+		return err
+	}
+	if duplicate {
+		log.Printf("skipping duplicate inbound email s3_key=%s message_id=%s", s3Key, email.MessageID)
+		return nil
+	}
+
 	var ticketID int64
 
 	err = tx.QueryRowContext(ctx, `
@@ -351,6 +369,10 @@ func (a *App) storeInboundEmail(
 		s3Key,
 	)
 	if err != nil {
+		if isUniqueViolation(err) {
+			log.Printf("skipping concurrent duplicate inbound email s3_key=%s message_id=%s", s3Key, email.MessageID)
+			return nil
+		}
 		return fmt.Errorf("store message: %w", err)
 	}
 
@@ -381,6 +403,34 @@ func (a *App) storeInboundEmail(
 	)
 
 	return nil
+}
+
+func inboundEmailAlreadyStored(ctx context.Context, tx *sql.Tx, s3Key, messageID string) (bool, error) {
+	var ticketID int64
+
+	err := tx.QueryRowContext(ctx, `
+		SELECT ticket_id
+		FROM support.messages
+		WHERE s3_key = $1
+		   OR (NULLIF($2, '') IS NOT NULL AND message_id = $2)
+		LIMIT 1
+	`, s3Key, messageID).Scan(&ticketID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("check duplicate inbound email: %w", err)
+	}
+
+	return true, nil
+}
+
+func isUniqueViolation(err error) bool {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return pqErr.Code == "23505"
+	}
+	return false
 }
 
 func parseEmail(raw []byte) (Email, error) {

@@ -157,3 +157,27 @@ variable "alert_email" {
   default     = null
   nullable    = true
 }
+
+variable "notification_service_account_name" {
+  description = "ServiceAccount name for notification-service"
+  type        = string
+  default     = "notification-service"
+}
+
+variable "support_service_account_name" {
+  description = "ServiceAccount name for support-service"
+  type        = string
+  default     = "support-service"
+}
+
+variable "support_email_bucket_name" {
+  description = "Name of the existing S3 bucket that stores inbound production support emails."
+  type        = string
+}
+
+variable "notification_ses_email_identity_arn" {
+  description = "ARN of the existing SES identity notification-service may use. Leave null to skip SES send permission in production."
+  type        = string
+  default     = null
+  nullable    = true
+}
