@@ -1,22 +1,26 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
 	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
+var sesClient *SESClient
 
 func main() {
 	dbURL := os.Getenv("DATABASE_URL")
@@ -44,6 +48,12 @@ func main() {
 			return
 		}
 	}
+
+	sesClient, err = newSESClient(context.Background())
+	if err != nil {
+		log.Fatalf("failed to initialize SES client: %v", err)
+	}
+	log.Printf("SES client initialized for region %s", getEnv("AWS_REGION", "eu-west-2"))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/livez", func(w http.ResponseWriter, r *http.Request) {
@@ -285,13 +295,43 @@ func handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Email and SMS delivery are intentionally simulated for this project.
-	// A future improvement could integrate AWS SES for email and SNS for SMS.
-	status := "sent"
-	sentAt := time.Now()
+	// SMS delivery is not implemented yet.
+	if req.Channel == "sms" {
+		httpError(w, "sms delivery is not implemented", http.StatusNotImplemented)
+		return
+	}
 
+	// Render the stored template using the request data.
+	render := func(source string) (string, error) {
+		tmpl, err := template.New("notification").Option("missingkey=error").Parse(source)
+		if err != nil {
+			return "", fmt.Errorf("parse notification template: %w", err)
+		}
+
+		var rendered bytes.Buffer
+		if err := tmpl.Execute(&rendered, req.Data); err != nil {
+			return "", fmt.Errorf("render notification template: %w", err)
+		}
+
+		return rendered.String(), nil
+	}
+
+	renderedSubject, err := render(subject)
+	if err != nil {
+		log.Printf("failed to render notification subject: %v", err)
+		httpError(w, "failed to render notification template", http.StatusBadRequest)
+		return
+	}
+
+	renderedBody, err := render(body)
+	if err != nil {
+		log.Printf("failed to render notification body: %v", err)
+		httpError(w, "failed to render notification template", http.StatusBadRequest)
+		return
+	}
+
+	// Record the notification before attempting delivery.
 	var notifID int
-
 	err = db.QueryRowContext(
 		r.Context(),
 		`INSERT INTO notifications (
@@ -301,44 +341,88 @@ func handleSend(w http.ResponseWriter, r *http.Request) {
 			subject,
 			body,
 			metadata,
-			status,
-			sent_at
+			status
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		VALUES ($1, $2, $3, $4, $5, $6, 'pending')
 		RETURNING id`,
 		req.Recipient,
 		req.Channel,
 		req.Template,
-		subject,
-		body,
+		renderedSubject,
+		renderedBody,
 		metadata,
-		status,
-		sentAt,
 	).Scan(&notifID)
 
 	if err != nil {
-		log.Printf("failed to persist notification: %v", err)
+		log.Printf("failed to persist pending notification: %v", err)
 		httpError(w, "failed to save notification", http.StatusInternalServerError)
 		return
 	}
 
+	// Send the actual email through Amazon SES.
+	messageID, err := sesClient.SendEmail(
+		r.Context(),
+		req.Recipient,
+		renderedSubject,
+		renderedBody,
+	)
+
+	if err != nil {
+		log.Printf(
+			"notification delivery failed: id=%d recipient=%s template=%s error=%v",
+			notifID,
+			req.Recipient,
+			req.Template,
+			err,
+		)
+
+		if _, updateErr := db.ExecContext(
+			r.Context(),
+			`UPDATE notifications SET status = 'failed' WHERE id = $1`,
+			notifID,
+		); updateErr != nil {
+			log.Printf("failed to mark notification %d as failed: %v", notifID, updateErr)
+		}
+
+		httpError(w, "failed to send notification", http.StatusBadGateway)
+		return
+	}
+
+	// Only mark the notification as sent after SES accepts it.
+	_, err = db.ExecContext(
+		r.Context(),
+		`UPDATE notifications
+		 SET status = 'sent', sent_at = NOW()
+		 WHERE id = $1`,
+		notifID,
+	)
+
+	if err != nil {
+		log.Printf("failed to update notification %d after SES delivery: %v", notifID, err)
+		httpError(w, "notification was sent but history update failed", http.StatusInternalServerError)
+		return
+	}
+
 	log.Printf(
-		"Notification sent (simulated): [%s] %s -> %s (template: %s)",
+		"Notification sent: id=%d channel=%s template=%s recipient=%s ses_message_id=%s",
+		notifID,
 		req.Channel,
 		req.Template,
 		req.Recipient,
-		req.Template,
+		messageID,
 	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":        notifID,
-		"recipient": req.Recipient,
-		"channel":   req.Channel,
-		"status":    status,
+		"id":         notifID,
+		"recipient":  req.Recipient,
+		"channel":    req.Channel,
+		"status":     "sent",
+		"message_id": messageID,
 	})
+
 }
 
 func handleHistory(w http.ResponseWriter, r *http.Request) {

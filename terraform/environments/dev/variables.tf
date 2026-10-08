@@ -107,13 +107,6 @@ variable "alert_email" {
   default     = null
   nullable    = true
 }
-variable "notification_ses_email_identity" {
-  description = "Email identity used by notification-service with Amazon SES."
-  type        = string
-  default     = null
-  nullable    = true
-}
-
 variable "notification_service_account_name" {
   description = "Kubernetes ServiceAccount name used by notification-service."
   type        = string

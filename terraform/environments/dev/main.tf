@@ -78,7 +78,7 @@ module "iam" {
   shipping_service_account_name       = var.shipping_service_account_name
   worker_service_account_name         = var.worker_service_account_name
   notification_service_account_name   = var.notification_service_account_name
-  notification_ses_email_identity_arn = module.notification.ses_email_identity_arn
+  notification_ses_email_identity_arn = "arn:aws:ses:eu-west-2:304960797322:identity/bravoorders.com"
 
   sqs_queue_arns = [module.sqs.queue_arn]
 
@@ -117,9 +117,4 @@ module "monitoring" {
   alert_email = var.alert_email
 
   tags = local.tags
-}
-module "notification" {
-  source = "../../modules/notification"
-
-  ses_email_identity = var.notification_ses_email_identity
 }
