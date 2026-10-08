@@ -107,6 +107,12 @@ variable "alert_email" {
   default     = null
   nullable    = true
 }
+variable "support_service_account_name" {
+  description = "Kubernetes ServiceAccount name used by support-service."
+  type        = string
+  default     = "support-service"
+}
+
 variable "notification_service_account_name" {
   description = "Kubernetes ServiceAccount name used by notification-service."
   type        = string

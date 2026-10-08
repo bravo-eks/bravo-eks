@@ -101,3 +101,23 @@ output "runtime_secret_arn" {
   description = "ARN of the dev runtime application secret."
   value       = aws_secretsmanager_secret.runtime.arn
 }
+
+output "support_sqs_queue_url" {
+  description = "URL of the support inbound SQS queue."
+  value       = module.support_sqs.queue_url
+}
+
+output "support_sqs_queue_arn" {
+  description = "ARN of the support inbound SQS queue."
+  value       = module.support_sqs.queue_arn
+}
+
+output "support_sqs_dlq_url" {
+  description = "URL of the support inbound SQS dead-letter queue."
+  value       = module.support_sqs.dlq_url
+}
+
+output "support_sqs_dlq_arn" {
+  description = "ARN of the support inbound SQS dead-letter queue."
+  value       = module.support_sqs.dlq_arn
+}

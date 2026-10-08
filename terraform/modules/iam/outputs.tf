@@ -93,3 +93,13 @@ output "notification_service_role_name" {
   description = "Name of the notification-service IAM role."
   value       = aws_iam_role.notification_service.name
 }
+
+output "support_service_role_arn" {
+  description = "ARN of the IAM role assumed by the support-service Kubernetes ServiceAccount."
+  value       = aws_iam_role.support_service.arn
+}
+
+output "support_service_role_name" {
+  description = "Name of the support-service IAM role."
+  value       = aws_iam_role.support_service.name
+}

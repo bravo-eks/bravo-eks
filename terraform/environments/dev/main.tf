@@ -1,3 +1,8 @@
+
+data "aws_s3_bucket" "support_email" {
+  bucket = "bravo-dev-support-email"
+}
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 
@@ -13,6 +18,17 @@ module "sqs" {
   source = "../../modules/sqs"
 
   queue_name = "${local.name_prefix}-events"
+}
+
+
+module "support_sqs" {
+  source = "../../modules/sqs"
+
+  queue_name                    = "${local.name_prefix}-support-inbound"
+  visibility_timeout_seconds    = 60
+  message_retention_seconds     = 345600
+  max_receive_count             = 5
+  dlq_message_retention_seconds = 1209600
 }
 
 ## VPC
@@ -80,6 +96,10 @@ module "iam" {
   notification_service_account_name   = var.notification_service_account_name
   notification_ses_email_identity_arn = "arn:aws:ses:eu-west-2:304960797322:identity/bravoorders.com"
 
+  support_service_account_name = var.support_service_account_name
+  support_sqs_queue_arn        = module.support_sqs.queue_arn
+  support_s3_bucket_arn        = data.aws_s3_bucket.support_email.arn
+
   sqs_queue_arns = [module.sqs.queue_arn]
 
   external_secrets_secret_arns = [
@@ -116,4 +136,52 @@ module "monitoring" {
   alert_email = var.alert_email
 
   tags = local.tags
+}
+
+
+data "aws_iam_policy_document" "support_s3_to_sqs" {
+  statement {
+    sid    = "AllowSupportS3ToSendMessage"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["s3.amazonaws.com"]
+    }
+
+    actions   = ["sqs:SendMessage"]
+    resources = [module.support_sqs.queue_arn]
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [data.aws_s3_bucket.support_email.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = ["304960797322"]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "support_s3" {
+  queue_url = module.support_sqs.queue_url
+  policy    = data.aws_iam_policy_document.support_s3_to_sqs.json
+}
+
+
+resource "aws_s3_bucket_notification" "support_email" {
+  bucket = data.aws_s3_bucket.support_email.id
+
+  queue {
+    queue_arn     = module.support_sqs.queue_arn
+    events        = ["s3:ObjectCreated:*"]
+    filter_prefix = "incoming/"
+  }
+
+  depends_on = [
+    aws_sqs_queue_policy.support_s3
+  ]
 }

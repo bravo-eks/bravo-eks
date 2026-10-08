@@ -726,6 +726,115 @@ data "aws_iam_policy_document" "notification_service_assume_role" {
   }
 }
 
+data "aws_iam_policy_document" "support_service_assume_role" {
+  statement {
+    sid    = "AllowSupportServiceAccount"
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+
+    principals {
+      type = "Federated"
+
+      identifiers = [
+        var.eks_oidc_provider_arn
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.eks_oidc_provider_url}:sub"
+
+      values = [
+        "system:serviceaccount:${var.kubernetes_namespace}:${var.support_service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "support_service" {
+  name               = "${var.name_prefix}-support-service"
+  description        = "IAM role assumed by the support-service Kubernetes workload using IRSA."
+  assume_role_policy = data.aws_iam_policy_document.support_service_assume_role.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name      = "${var.name_prefix}-support-service"
+      Component = "support-service"
+    }
+  )
+}
+
+data "aws_iam_policy_document" "support_service_sqs" {
+  statement {
+    sid    = "ConsumeSupportInboundMessages"
+    effect = "Allow"
+
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "sqs:ChangeMessageVisibility",
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl"
+    ]
+
+    resources = [
+      var.support_sqs_queue_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "support_service_sqs" {
+  name        = "${var.name_prefix}-support-service-sqs"
+  description = "Allow support-service to consume inbound support email messages."
+
+  policy = data.aws_iam_policy_document.support_service_sqs.json
+}
+
+resource "aws_iam_role_policy_attachment" "support_service_sqs" {
+  role       = aws_iam_role.support_service.name
+  policy_arn = aws_iam_policy.support_service_sqs.arn
+}
+
+data "aws_iam_policy_document" "support_service_s3" {
+  statement {
+    sid    = "ReadInboundSupportEmails"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject"
+    ]
+
+    resources = [
+      "${var.support_s3_bucket_arn}/incoming/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "support_service_s3" {
+  name        = "${var.name_prefix}-support-service-s3"
+  description = "Allow support-service to read inbound support email objects."
+
+  policy = data.aws_iam_policy_document.support_service_s3.json
+}
+
+resource "aws_iam_role_policy_attachment" "support_service_s3" {
+  role       = aws_iam_role.support_service.name
+  policy_arn = aws_iam_policy.support_service_s3.arn
+}
+
 resource "aws_iam_role" "notification_service" {
   name               = "${var.name_prefix}-notification-service"
   description        = "IAM role assumed by the notification-service Kubernetes workload using IRSA."

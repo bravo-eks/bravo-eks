@@ -1,0 +1,100 @@
+image:
+  repository: "304960797322.dkr.ecr.eu-west-2.amazonaws.com/support-service"
+  tag: "846c93d28b0f82904ef5a3d773f9cccc5fe20841"
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 8087
+    protocol: TCP
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8087
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+env:
+  - name: AWS_REGION
+    value: "eu-west-2"
+  - name: SUPPORT_S3_BUCKET
+    value: "bravo-dev-support-email"
+  - name: SUPPORT_S3_PREFIX
+    value: "incoming/"
+  - name: SUPPORT_SQS_QUEUE_URL
+    value: "https://sqs.eu-west-2.amazonaws.com/304960797322/bravo-dev-support-inbound"
+  - name: SUPPORT_FROM_EMAIL
+    value: "support@bravoorders.com"
+
+envFrom:
+  - secretRef:
+      name: support-service-database
+
+configMap:
+  enabled: false
+
+serviceAccount:
+  create: true
+  name: support-service
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-support-service"
+
+migration:
+  enabled: true
+
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: support-service-database
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: bravo/dev/support-service/database
+        property: DATABASE_URL
+
+autoscaling:
+  enabled: false
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+ingress:
+  enabled: false
+
+networkPolicy:
+  enabled: true
+  ingressFrom: []
+  egressTo: []
+  allowPostgres: true
+  allowRedis: false
+  allowExternalHTTPS: true

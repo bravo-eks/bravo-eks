@@ -182,6 +182,22 @@ variable "notification_service_account_name" {
   default     = "notification-service"
 }
 
+variable "support_service_account_name" {
+  description = "Kubernetes ServiceAccount name used by support-service."
+  type        = string
+  default     = "support-service"
+}
+
+variable "support_sqs_queue_arn" {
+  description = "ARN of the SQS queue consumed by support-service."
+  type        = string
+}
+
+variable "support_s3_bucket_arn" {
+  description = "ARN of the S3 bucket containing inbound support emails."
+  type        = string
+}
+
 variable "notification_ses_email_identity_arn" {
   description = "ARN of the SES identity notification-service is allowed to use."
   type        = string

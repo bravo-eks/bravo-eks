@@ -25,6 +25,7 @@ Each state-owning service has its own PostgreSQL user and schema.
 | payment-service | `payment_user` | `payments` | `payments`, `ledger_entries` |
 | notification-service | `notification_user` | `notifications` | `notifications`, `notification_templates` |
 | shipping-service | `shipping_user` | `shipping` | `shipments`, `tracking_events` |
+| support-service | `support_user` | `support` | `tickets`, `messages` |
 
 ---
 
@@ -44,6 +45,8 @@ Normal service users can operate only within their own schema.
 | `notification_user` | notifications | notification_templates | ✓ | ✓ | ✓ | ✓ |
 | `shipping_user` | shipping | shipments | ✓ | ✓ | ✓ | ✓ |
 | `shipping_user` | shipping | tracking_events | ✓ | ✓ | ✓ | ✓ |
+| `support_user` | support | tickets | ✓ | ✓ | ✓ | ✓ |
+| `support_user` | support | messages | ✓ | ✓ | ✓ | ✓ |
 
 > DELETE permissions should be validated against the service SQL before final grants are applied.
 
