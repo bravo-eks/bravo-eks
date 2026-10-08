@@ -2,6 +2,16 @@ const API_BASE='';
 const ADMIN_UI_SESSION='bravo_admin_session';
 const CUSTOMER_UI_SESSION='bravo_customer_session';
 const CUSTOMER_BASKET='bravo_customer_basket';
+
+const productImages={
+  'BRAVO-001':'/images/products/bravo-test-product.webp',
+  'BRAVO-002':'/images/products/wireless-keyboard.webp',
+  'BRAVO-003':'/images/products/usb-c-hub.webp',
+  'BRAVO-004':'/images/products/laptop-stand.webp',
+  'BRAVO-005':'/images/products/wireless-mouse.webp',
+  'BRAVO-006':'/images/products/desk-lamp.webp'
+};
+
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));let state={orders:[],products:[],shipments:[],ledger:[],source:'loading'},dashboardStarted=false;
 let customerProducts=[],customerProductsLoaded=false,customerProductsLoading=false,customerProductsError='',customerBasket=readCustomerBasket(),checkoutSubmitting=false,customerConfirmation=readCustomerConfirmation(),customerOrderSummaries=readCustomerOrderSummaries(),customerOrders=[],customerOrdersLoading=false,customerOrdersError='',selectedCustomerOrderId=null,customerPayments=[],customerPaymentsUnavailable=false,customerRefundRequests=[],customerRefundRequestsUnavailable=false,customerRefundFormOrderId=null,customerRefundSubmitting=false,adminRefundRequests=[],adminRefundRequestsLoading=false,adminRefundRequestsError=false,adminRefundActions=new Set();
 const money=(n,c='GBP')=>new Intl.NumberFormat('en-GB',{style:'currency',currency:c}).format(Number(n||0));const label=s=>(s||'').replaceAll('_',' ');const status=s=>'<span class="status '+s+'">'+label(s)+'</span>';
@@ -55,15 +65,7 @@ async function loadCustomerProducts(force=false){
     if(basketAdjusted)saveCustomerBasket();
     customerProductsLoaded=true;
     
-    const productImages = {
-  'BRAVO-001': '/images/products/bravo-test-product.webp',
-  'BRAVO-002': '/images/products/wireless-keyboard.webp',
-  'BRAVO-003': '/images/products/usb-c-hub.webp',
-  'BRAVO-004': '/images/products/laptop-stand.webp',
-  'BRAVO-005': '/images/products/wireless-mouse.webp',
-  'BRAVO-006': '/images/products/desk-lamp.webp'
-
-};
+  
     renderCustomerProducts();
     renderCustomerBasket();
     if(window.location.hash==='#customer-checkout')renderCheckout();
@@ -96,7 +98,8 @@ function renderCustomerBasket(){
     subtotal+=lineTotal;
     const outOfStock=available===0;
     const name=escapeHtml(product.name||'Product');
-    return '<article class="basket-item"><div class="basket-item-art" aria-hidden="true">B</div><div class="basket-item-info"><span class="product-sku">'+(product.sku?'SKU '+escapeHtml(product.sku):'Bravo Orders product')+'</span><h2>'+name+'</h2><p>'+money(price,product.currency||item.currency||'GBP')+' each'+(outOfStock?' · Currently unavailable':'')+'</p><div class="basket-quantity"><button type="button" data-basket-action="decrease" data-product-id="'+escapeHtml(item.id)+'" aria-label="Decrease quantity" '+(quantity<=1?'disabled':'')+'>−</button><span>'+quantity+'</span><button type="button" data-basket-action="increase" data-product-id="'+escapeHtml(item.id)+'" aria-label="Increase quantity" '+(outOfStock||quantity>=available?'disabled':'')+'>+</button></div></div><strong class="basket-line-total">'+money(lineTotal,product.currency||item.currency||'GBP')+'</strong><button class="remove-basket-item" type="button" data-basket-action="remove" data-product-id="'+escapeHtml(item.id)+'">Remove</button></article>';
+    const image=productImages[product.sku] || '';
+    return '<article class="basket-item"><div class="basket-item-art" aria-hidden="true">'+(image?'<img src="'+image+'" alt="'+name+'">':'B')+'</div><div class="basket-item-info"><span class="product-sku">'+(product.sku?'SKU '+escapeHtml(product.sku):'Bravo Orders product')+'</span><h2>'+name+'</h2><p>'+money(price,product.currency||item.currency||'GBP')+' each'+(outOfStock?' · Currently unavailable':'')+'</p><div class="basket-quantity"><button type="button" data-basket-action="decrease" data-product-id="'+escapeHtml(item.id)+'" aria-label="Decrease quantity" '+(quantity<=1?'disabled':'')+'>−</button><span>'+quantity+'</span><button type="button" data-basket-action="increase" data-product-id="'+escapeHtml(item.id)+'" aria-label="Increase quantity" '+(outOfStock||quantity>=available?'disabled':'')+'>+</button></div></div><strong class="basket-line-total">'+money(lineTotal,product.currency||item.currency||'GBP')+'</strong><button class="remove-basket-item" type="button" data-basket-action="remove" data-product-id="'+escapeHtml(item.id)+'">Remove</button></article>';
   }).join('');
   $('#basketSubtotal').textContent=money(subtotal);
   $('#checkoutBtn').disabled=false;
