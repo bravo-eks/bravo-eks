@@ -22,6 +22,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy only the compiled binary
 COPY --from=builder /app/dashboard-api /app/dashboard-api
+COPY --from=builder /app/static /app/static
 
 EXPOSE 8086
 
