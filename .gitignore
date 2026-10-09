@@ -21,7 +21,9 @@ services/worker/worker
 # Terraform
 .terraform/
 *.tfstate
-*.tfstate.backup
+*.tfstate.*
+*.tfplan
+terraform/**/plan.txt
 .terraform.lock.hcl
 
 # Kubernetes
