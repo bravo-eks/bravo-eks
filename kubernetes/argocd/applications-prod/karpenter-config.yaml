@@ -5,12 +5,17 @@ metadata:
   namespace: argocd
 spec:
   project: bravo-prod-platform
-  source:
-    repoURL: https://github.com/bravo-eks/bravo-eks.git
-    targetRevision: main
-    path: kubernetes/platform/karpenter-prod
-    directory:
-      include: "{nodepool.yaml,ec2nodeclass.yaml}"
+  sources:
+    - repoURL: https://github.com/bravo-eks/bravo-eks.git
+      targetRevision: main
+      path: kubernetes/platform/karpenter
+      directory:
+        include: nodepool.yaml
+    - repoURL: https://github.com/bravo-eks/bravo-eks.git
+      targetRevision: main
+      path: kubernetes/platform/karpenter-prod
+      directory:
+        include: ec2nodeclass.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: karpenter
