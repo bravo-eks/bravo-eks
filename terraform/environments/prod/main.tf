@@ -56,7 +56,7 @@ module "iam" {
     module.sqs.queue_arn
   ]
 
-  external_secrets_secret_arns = [module.rds.master_user_secret_arn]
+  external_secrets_secret_arns = [module.rds.master_user_secret_arn, aws_secretsmanager_secret.runtime.arn]
 
   velero_backup_bucket_arn = module.velero.bucket_arn
   tags                     = var.tags
