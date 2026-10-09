@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: bravo-prod-bootstrap
+  namespace: argocd
+spec:
+  description: Isolated Production bootstrap; applications require explicit approval and sync
+  sourceRepos:
+    - https://github.com/bravo-eks/bravo-eks.git
+  destinations:
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: Application
