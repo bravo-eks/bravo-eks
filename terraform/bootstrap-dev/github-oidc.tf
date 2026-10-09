@@ -33,7 +33,7 @@ resource "aws_iam_role" "github_ecr" {
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks@330665479/bravo-eks@1373795192:environment:production"
+            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks/bravo-eks:environment:Development"
           }
         }
       }
@@ -223,10 +223,22 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
         Resource = "*"
       },
       {
+        Sid    = "CloudWatchRead"
+        Effect = "Allow"
+
+        Action = [
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource"
+        ]
+
+        Resource = "*"
+      },
+      {
         Sid    = "VeleroS3Read"
         Effect = "Allow"
 
         Action = [
+          "s3:GetBucketPolicy",
           "s3:GetBucketLocation",
           "s3:GetBucketPublicAccessBlock",
           "s3:GetBucketVersioning",

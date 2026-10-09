@@ -24,10 +24,10 @@ module "eks" {
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
 
-  system_node_instance_types = var.system_node_instance_types
-  system_node_desired_size   = var.system_node_desired_size
-  system_node_min_size       = var.system_node_min_size
-  system_node_max_size       = var.system_node_max_size
+  system_node_instance_types   = var.system_node_instance_types
+  system_node_desired_size     = var.system_node_desired_size
+  system_node_min_size         = var.system_node_min_size
+  system_node_max_size         = var.system_node_max_size
   cluster_admin_principal_arns = var.cluster_admin_principal_arns
 
   tags = var.tags
