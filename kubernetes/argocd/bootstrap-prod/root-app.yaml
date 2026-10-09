@@ -1,5 +1,4 @@
-# Staged only: do not apply until the separate Production applications path exists and is reviewed.
-# This root intentionally has no automated sync policy.
+# Review the Production applications before syncing this manual-only root.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -10,7 +9,7 @@ spec:
   source:
     repoURL: https://github.com/bravo-eks/bravo-eks.git
     targetRevision: main
-    path: kubernetes/argocd/applications-prod
+    path: kubernetes/argocd/applications-prod/app-groups
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: bravo-prod-redis
+  namespace: argocd
+spec:
+  description: Bravo Redis workload
+
+  sourceRepos:
+    - https://github.com/bravo-eks/bravo-eks.git
+
+  destinations:
+    - namespace: redis
+      server: https://kubernetes.default.svc
+
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
