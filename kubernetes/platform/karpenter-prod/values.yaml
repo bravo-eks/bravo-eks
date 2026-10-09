@@ -1,0 +1,23 @@
+settings:
+  clusterName: bravo-eks-prod
+
+serviceAccount:
+  create: true
+  name: karpenter
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::083268669572:role/bravo-eks-prod-karpenter-controller
+
+replicas: 2
+
+nodeSelector:
+  kubernetes.io/os: linux
+  workload: system
+
+controller:
+  resources:
+    requests:
+      cpu: 1
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 1Gi
