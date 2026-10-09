@@ -45,3 +45,20 @@ resource "aws_s3_bucket_ownership_controls" "terraform_state" {
     object_ownership = "BucketOwnerEnforced"
   }
 }
+
+module "ecr" {
+  source = "../modules/ecr"
+
+  ecr_repositories = [
+    "api-gateway",
+    "dashboard-api",
+    "inventory-service",
+    "notification-service",
+    "order-service",
+    "payment-service",
+    "scheduler",
+    "shipping-service",
+    "support-service",
+    "worker"
+  ]
+}
