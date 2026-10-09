@@ -43,6 +43,9 @@ module "iam" {
 
   cluster_name = module.eks.cluster_name
 
+  # Keep production DNS changes disabled until the separate DNS cutover.
+  enable_external_dns_route53 = false
+
   kubernetes_namespace           = var.kubernetes_namespace
   order_service_account_name     = var.order_service_account_name
   payment_service_account_name   = var.payment_service_account_name
