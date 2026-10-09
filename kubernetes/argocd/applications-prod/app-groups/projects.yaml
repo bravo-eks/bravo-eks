@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: bravo-prod-projects
+  namespace: argocd
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/bravo-eks/bravo-eks.git
+    targetRevision: main
+    path: kubernetes/argocd/applications-prod/projects
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd

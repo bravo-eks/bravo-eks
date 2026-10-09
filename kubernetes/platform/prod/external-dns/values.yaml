@@ -1,0 +1,31 @@
+provider:
+  name: aws
+
+sources:
+ - gateway-httproute
+
+domainFilters:
+  - "bravoorders.com"
+
+# Production Route 53 hosted zone has not been created. Replace before enabling sync.
+zoneIdFilters:
+  - TODO_PROD_ROUTE53_HOSTED_ZONE_ID
+
+registry: txt
+txtOwnerId: "bravo-eks-prod"
+
+policy: upsert-only
+
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::083268669572:role/bravo-eks-production-external-dns
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi

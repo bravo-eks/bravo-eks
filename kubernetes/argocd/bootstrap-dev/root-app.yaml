@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://github.com/bravo-eks/bravo-eks.git
     targetRevision: main
-    path: kubernetes/argocd/applications/app-groups
+    path: kubernetes/argocd/applications-dev/app-groups
 
   destination:
     server: https://kubernetes.default.svc

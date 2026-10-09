@@ -1,0 +1,3 @@
+externalSecret:
+  enabled: true
+  remoteKey: TODO_PROD_SECRET_PATH_RUNTIME

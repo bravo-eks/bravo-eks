@@ -1,0 +1,82 @@
+replicaCount: 1
+
+image:
+  repository: "083268669572.dkr.ecr.eu-west-2.amazonaws.com/scheduler"
+  tag: "a846638d07be0e000e0cc513e4b730500a1e65ed"
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: health
+    containerPort: 8091
+    protocol: TCP
+
+service:
+  type: ClusterIP
+  portName: health
+  port: 8091
+  targetPort: 8091
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: health
+  periodSeconds: 5
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: health
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: health
+
+env: []
+
+envFrom:
+  - secretRef:
+      name: scheduler-database
+
+configMap:
+  enabled: false
+
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: scheduler-database
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: TODO_PROD_SECRET_PATH_SCHEDULER_DATABASE_URL
+        property: DATABASE_URL
+
+autoscaling:
+  enabled: false
+
+pdb:
+  enabled: false
+
+ingress:
+  enabled: false
+
+networkPolicy:
+  enabled: true
+  ingressFrom: []
+  egressTo: []
+  allowPostgres: true
+  allowRedis: false
+  allowExternalHTTPS: false
