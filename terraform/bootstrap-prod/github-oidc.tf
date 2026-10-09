@@ -35,7 +35,7 @@ resource "aws_iam_role" "github_ecr" {
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks@330665479/bravo-eks@1373795192:environment:Production"
+            "token.actions.githubusercontent.com:sub" = "repo:bravo-eks/bravo-eks:environment:Production"
           }
         }
       }
