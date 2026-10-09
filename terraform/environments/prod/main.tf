@@ -52,6 +52,8 @@ module "iam" {
   karpenter_service_account_name = var.karpenter_service_account_name
   karpenter_node_role_arn        = module.eks.node_role_arn
 
+  external_dns_hosted_zone_id = var.external_dns_hosted_zone_id
+
   sqs_queue_arns = [
     module.sqs.queue_arn
   ]
