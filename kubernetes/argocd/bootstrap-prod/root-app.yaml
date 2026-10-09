@@ -1,0 +1,19 @@
+# Staged only: do not apply until the separate Production applications path exists and is reviewed.
+# This root intentionally has no automated sync policy.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bravo-prod-root
+  namespace: argocd
+spec:
+  project: bravo-prod-bootstrap
+  source:
+    repoURL: https://github.com/bravo-eks/bravo-eks.git
+    targetRevision: main
+    path: kubernetes/argocd/applications-prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
