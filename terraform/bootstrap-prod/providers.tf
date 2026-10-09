@@ -1,8 +1,13 @@
 terraform {
   required_version = ">= 1.10.0"
 
-  # First bootstrap uses local state. Never point this root at Account A.
-  backend "local" {}
+  backend "s3" {
+    bucket       = "bravo-eks-prod-tfstate"
+    key          = "bootstrap-prod/terraform.tfstate"
+    region       = "eu-west-2"
+    encrypt      = true
+    use_lockfile = true
+  }
 
   required_providers {
     aws = {
