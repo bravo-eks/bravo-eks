@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: bravo-bootstrap
+  namespace: argocd
+spec:
+  description: Bravo Argo CD App-of-Apps bootstrap
+
+  sourceRepos:
+    - https://github.com/bravo-eks/bravo-eks.git
+
+  destinations:
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: Application
