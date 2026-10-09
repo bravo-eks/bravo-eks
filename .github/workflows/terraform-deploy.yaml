@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ inputs.environment }}" = "bootstrap" ]; then
-            echo "TF_DIR=./terraform/bootstrap" >> "$GITHUB_ENV"
+            echo "TF_DIR=./terraform/bootstrap-dev" >> "$GITHUB_ENV"
           else
             echo "TF_DIR=./terraform/environments/${{ inputs.environment }}" >> "$GITHUB_ENV"
           fi
@@ -118,7 +118,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ inputs.environment }}" = "bootstrap" ]; then
-            echo "TF_DIR=./terraform/bootstrap" >> "$GITHUB_ENV"
+            echo "TF_DIR=./terraform/bootstrap-dev" >> "$GITHUB_ENV"
           else
             echo "TF_DIR=./terraform/environments/${{ inputs.environment }}" >> "$GITHUB_ENV"
           fi
