@@ -31,3 +31,5 @@ order_service_account_name    = "order-service"
 payment_service_account_name  = "payment-service"
 shipping_service_account_name = "shipping-service"
 worker_service_account_name   = "worker"
+# Replace with the hosted zone ID created in the NEW AWS account.
+external_dns_hosted_zone_id = "REPLACE_WITH_NEW_PROD_HOSTED_ZONE_ID"
