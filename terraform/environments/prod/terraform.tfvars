@@ -1,12 +1,12 @@
 # VPC
-vpc_name           = "bravo-eks"
+vpc_name           = "bravo-eks-prod"
 enable_nat_gateway = true
 
 # RDS
 project_name = "bravo-eks"
-environment  = "production"
+environment  = "prod"
 
-database_name   = "bravo-database"
+database_name   = "bravoprod"
 master_username = "bravo-dbadmin"
 
 rds_instance_class      = "db.t4g.micro"
@@ -14,7 +14,7 @@ rds_multi_az            = false
 rds_deletion_protection = true
 
 # SQS
-sqs_queue_name = "bravo-events"
+sqs_queue_name = "bravo-eks-prod-events"
 
 # EKS
 cluster_name    = "bravo-eks-prod"
