@@ -103,3 +103,7 @@ output "karpenter_controller_role_arn" {
   description = "IAM role ARN for the Karpenter controller"
   value       = module.iam.karpenter_controller_role_arn
 }
+output "runtime_secret_arn" {
+  description = "ARN of the production runtime credentials secret"
+  value       = aws_secretsmanager_secret.runtime.arn
+}
