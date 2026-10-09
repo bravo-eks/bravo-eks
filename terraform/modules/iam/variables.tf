@@ -188,3 +188,9 @@ variable "notification_ses_email_identity_arn" {
   default     = null
   nullable    = true
 }
+
+variable "external_dns_hosted_zone_id" {
+  description = "Route53 hosted zone ID managed by this environment's ExternalDNS."
+  type        = string
+  default     = "Z094258811V8WSH58ZFW5"
+}
