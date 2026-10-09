@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter-prod
+  namespace: argocd
+spec:
+  project: bravo-prod-platform
+  sources:
+    - repoURL: public.ecr.aws/karpenter
+      chart: karpenter
+      targetRevision: 1.12.1
+      helm:
+        valueFiles:
+          - $values/kubernetes/platform/karpenter-prod/values.yaml
+    - repoURL: https://github.com/bravo-eks/bravo-eks.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: karpenter
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
