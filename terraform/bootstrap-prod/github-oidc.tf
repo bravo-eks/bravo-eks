@@ -225,10 +225,22 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
         Resource = "*"
       },
       {
+        Sid    = "CloudWatchRead"
+        Effect = "Allow"
+
+        Action = [
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource"
+        ]
+
+        Resource = "*"
+      },
+      {
         Sid    = "VeleroS3Read"
         Effect = "Allow"
 
         Action = [
+          "s3:GetBucketPolicy",
           "s3:GetBucketLocation",
           "s3:GetBucketPublicAccessBlock",
           "s3:GetBucketVersioning",
