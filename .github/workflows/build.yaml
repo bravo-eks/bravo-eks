@@ -8,13 +8,6 @@ on:
       - "services/**"
       - ".github/workflows/build.yaml"
 
-  push:
-    branches:
-      - main
-    paths:
-      - "services/**"
-      - ".github/workflows/build.yaml"
-
   workflow_dispatch:
     inputs:
       environment:
@@ -175,9 +168,9 @@ jobs:
       #     ignore-unfixed: true
       #     exit-code: "1"
 
-  # Main: build, scan and push changed services to ECR
-  build-scan-push-main:
-    name: Main Build, Scan and Push - ${{ matrix.service }}
+  # Manual: build, scan and push all selected services to ECR
+  build-scan-push-manual:
+    name: Manual Build, Scan and Push - ${{ matrix.service }}
     needs: detect-changes
 
     if: >
