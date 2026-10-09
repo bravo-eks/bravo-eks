@@ -8,13 +8,6 @@ on:
       - "services/**"
       - ".github/workflows/build.yaml"
 
-  push:
-    branches:
-      - main
-    paths:
-      - "services/**"
-      - ".github/workflows/build.yaml"
-
   workflow_dispatch:
     inputs:
       environment:
@@ -54,9 +47,6 @@ jobs:
           TARGET: ${{ inputs.environment }}
         run: |
           case "$EVENT_NAME" in
-            push)
-              targets='[{"github_environment":"Development","expected_account":"304960797322","expected_registry":"304960797322.dkr.ecr.eu-west-2.amazonaws.com","expected_role":"arn:aws:iam::304960797322:role/bravo-github-ecr"}]'
-              ;;
             workflow_dispatch)
               case "$TARGET" in
                 dev)
@@ -175,13 +165,13 @@ jobs:
       #     ignore-unfixed: true
       #     exit-code: "1"
 
-  # Main: build, scan and push changed services to ECR
-  build-scan-push-main:
-    name: Main Build, Scan and Push - ${{ matrix.service }}
+  # Manual: build, scan and push all selected services to ECR
+  build-scan-push-manual:
+    name: Manual Build, Scan and Push - ${{ matrix.service }}
     needs: detect-changes
 
     if: >
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.event_name == 'workflow_dispatch' &&
       needs.detect-changes.outputs.services != '[]' &&
       needs.detect-changes.outputs.targets != '[]'
 
@@ -215,8 +205,8 @@ jobs:
           case "$GITHUB_ENVIRONMENT" in
             Development)
               expected_mapping="304960797322|304960797322.dkr.ecr.eu-west-2.amazonaws.com|arn:aws:iam::304960797322:role/bravo-github-ecr"
-              if [ "$EVENT_NAME" != "push" ] && { [ "$EVENT_NAME" != "workflow_dispatch" ] || [ "$INPUT_TARGET" != "dev" ]; }; then
-                echo "Development publishing is not permitted for this event/selection." >&2
+              if [ "$EVENT_NAME" != "workflow_dispatch" ] || [ "$INPUT_TARGET" != "dev" ]; then
+                echo "Development publishing requires an explicit manual dev selection." >&2
                 exit 1
               fi
               ;;
