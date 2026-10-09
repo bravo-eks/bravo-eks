@@ -24,7 +24,7 @@ provider "aws" {
 
 terraform {
   backend "s3" {
-    bucket       = "bravo-eksv2-project-s3"
+    bucket       = "REPLACE_WITH_NEW_ACCOUNT_PROD_STATE_BUCKET"
     key          = "environments/prod/terraform.tfstate"
     region       = "eu-west-2"
     encrypt      = true
