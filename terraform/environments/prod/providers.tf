@@ -12,6 +12,8 @@ terraform {
 provider "aws" {
   region = "eu-west-2"
 
+  allowed_account_ids = ["083268669572"]
+
   default_tags {
     tags = {
       Project     = "bravo-eks"
@@ -24,7 +26,7 @@ provider "aws" {
 
 terraform {
   backend "s3" {
-    bucket       = "bravo-eksv2-project-s3"
+    bucket       = "bravo-eks-prod-tfstate"
     key          = "environments/prod/terraform.tfstate"
     region       = "eu-west-2"
     encrypt      = true

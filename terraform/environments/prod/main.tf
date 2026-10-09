@@ -28,6 +28,7 @@ module "eks" {
   system_node_desired_size   = var.system_node_desired_size
   system_node_min_size       = var.system_node_min_size
   system_node_max_size       = var.system_node_max_size
+  cluster_admin_principal_arns = var.cluster_admin_principal_arns
 
   tags = var.tags
 }
@@ -42,6 +43,9 @@ module "iam" {
   eks_oidc_provider_url = module.eks.eks_oidc_provider_url
 
   cluster_name = module.eks.cluster_name
+
+  # Keep production DNS changes disabled until the separate DNS cutover.
+  enable_external_dns_route53 = false
 
   kubernetes_namespace           = var.kubernetes_namespace
   order_service_account_name     = var.order_service_account_name

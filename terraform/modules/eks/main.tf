@@ -258,3 +258,23 @@ resource "aws_eks_node_group" "system" {
     aws_iam_role_policy_attachment.node_ecr
   ]
 }
+# Explicit EKS access for administrator IAM principals.
+resource "aws_eks_access_entry" "cluster_admin" {
+  for_each = var.cluster_admin_principal_arns
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = each.value
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "cluster_admin" {
+  for_each = var.cluster_admin_principal_arns
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = aws_eks_access_entry.cluster_admin[each.key].principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+}
