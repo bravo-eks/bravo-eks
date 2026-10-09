@@ -6,8 +6,8 @@ enable_nat_gateway = true
 project_name = "bravo-eks"
 environment  = "production"
 
-database_name   = "bravo-database"
-master_username = "bravo-dbadmin"
+database_name   = "bravodatabase"
+master_username = "bravodbadmin"
 
 rds_instance_class      = "db.t4g.micro"
 rds_multi_az            = false
