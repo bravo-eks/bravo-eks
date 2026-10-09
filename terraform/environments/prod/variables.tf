@@ -157,3 +157,7 @@ variable "alert_email" {
   default     = null
   nullable    = true
 }
+variable "external_dns_hosted_zone_id" {
+  description = "Hosted zone ID in the new production AWS account."
+  type        = string
+}
