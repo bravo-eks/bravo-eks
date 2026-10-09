@@ -1,0 +1,22 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: application
+spec:
+  role: bravo-eks-prod-node-role
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - id: subnet-08c160b839d04b5ee
+    - id: subnet-0700317c5b7eb5dbd
+  securityGroupSelectorTerms:
+    - id: sg-034aaa6062ef58de5
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required
+  tags:
+    Project: bravo-eks
+    Environment: prod
+    ManagedBy: Karpenter
