@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "terraform/bootstrap/**"
+      - "terraform/bootstrap-dev/**"
       - "terraform/environments/dev/**"
       - "terraform/environments/prod/**"
       - "terraform/modules/**"
@@ -125,14 +125,14 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Format Check
-        run: terraform fmt -check -recursive terraform/bootstrap
+        run: terraform fmt -check -recursive terraform/bootstrap-dev
 
       - name: Terraform Init
-        working-directory: ./terraform/bootstrap
+        working-directory: ./terraform/bootstrap-dev
         run: terraform init
 
       - name: Terraform Validate
-        working-directory: ./terraform/bootstrap
+        working-directory: ./terraform/bootstrap-dev
         run: terraform validate
 
       - name: Install Checkov
@@ -142,16 +142,16 @@ jobs:
         run: checkov -d terraform/bootstrap --framework terraform --soft-fail
 
       - name: Terraform Plan
-        working-directory: ./terraform/bootstrap
+        working-directory: ./terraform/bootstrap-dev
         run: terraform plan -lock=false -out=tfplan
 
       - name: Show Terraform Plan
-        working-directory: ./terraform/bootstrap
+        working-directory: ./terraform/bootstrap-dev
         run: terraform show -no-color tfplan
 
       - name: Add Terraform Plan to Summary
         if: always()
-        working-directory: ./terraform/bootstrap
+        working-directory: ./terraform/bootstrap-dev
         run: |
           echo "## Terraform Bootstrap Plan" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
