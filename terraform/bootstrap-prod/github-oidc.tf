@@ -240,22 +240,22 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
         Effect = "Allow"
 
         Action = [
-            "s3:GetBucketAcl",
-            "s3:GetBucketCors",
-            "s3:GetBucketLocation",
-            "s3:GetBucketLogging",
-            "s3:GetBucketPolicy",
-            "s3:GetBucketPolicyStatus",
-            "s3:GetBucketPublicAccessBlock",
-            "s3:GetBucketRequestPayment",
-            "s3:GetBucketTagging",
-            "s3:GetBucketVersioning",
-            "s3:GetBucketWebsite",
-            "s3:GetEncryptionConfiguration",
-            "s3:GetLifecycleConfiguration",
-            "s3:GetReplicationConfiguration",
-            "s3:ListBucket"
-  
+          "s3:GetBucketAcl",
+          "s3:GetBucketCors",
+          "s3:GetBucketLocation",
+          "s3:GetBucketLogging",
+          "s3:GetBucketPolicy",
+          "s3:GetBucketPolicyStatus",
+          "s3:GetBucketPublicAccessBlock",
+          "s3:GetBucketRequestPayment",
+          "s3:GetBucketTagging",
+          "s3:GetBucketVersioning",
+          "s3:GetBucketWebsite",
+          "s3:GetEncryptionConfiguration",
+          "s3:GetLifecycleConfiguration",
+          "s3:GetReplicationConfiguration",
+          "s3:ListBucket"
+
         ]
 
         Resource = "arn:aws:s3:::bravo-eks-prod-velero-backups"
