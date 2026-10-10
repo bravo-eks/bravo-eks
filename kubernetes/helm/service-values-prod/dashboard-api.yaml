@@ -1,0 +1,126 @@
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    nodeAffinityPolicy: Honor
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: bravo-app
+        app.kubernetes.io/instance: dashboard-api
+
+replicaCount: 2
+
+image:
+  repository: "083268669572.dkr.ecr.eu-west-2.amazonaws.com/dashboard-api"
+  tag: "0716bb8812e4b233a68b1e606cccc554f1f957b1"
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 8086
+    protocol: TCP
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8086
+
+containerSecurityContext:
+  runAsUser: 100
+  runAsGroup: 101
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+env:
+  - name: API_GATEWAY_URL
+    value: "http://api-gateway-bravo-app:80"
+
+envFrom:
+  - secretRef:
+      name: dashboard-api-database
+
+configMap:
+  enabled: false
+
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: dashboard-api-database
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: bravo/prod/dashboard-api/database
+        property: DATABASE_URL
+
+autoscaling:
+  enabled: false
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: bravo-gateway
+      namespace: traefik
+  hostnames:
+    - shop.bravoorders.com
+  path:
+    type: PathPrefix
+    value: /
+
+ingress:
+  enabled: false
+
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - namespace: traefik
+      podLabels:
+        app.kubernetes.io/name: traefik
+  egressTo:
+    - service: api-gateway
+      port: 8080
+  allowPostgres: true
+  allowRedis: false
+  allowExternalHTTPS: false

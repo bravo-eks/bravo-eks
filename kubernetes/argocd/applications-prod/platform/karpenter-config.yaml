@@ -1,0 +1,26 @@
+# Install nodepool + ec2 nodepool
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: karpenter-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+
+spec:
+  project: bravo-prod-platform
+
+  source:
+    repoURL: https://github.com/bravo-eks/bravo-eks.git
+    targetRevision: main
+    path: kubernetes/platform/prod/karpenter
+    directory:
+      include: "{nodepool.yaml,ec2nodeclass.yaml}"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: karpenter
+
+  syncPolicy:
+    syncOptions: []

@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: dashboard-api
+  namespace: argocd
+
+spec:
+  project: bravo-prod-apps
+
+  source:
+    repoURL: https://github.com/bravo-eks/bravo-eks.git
+    targetRevision: main
+    path: kubernetes/helm/microservices
+    helm:
+      valueFiles:
+        - ../service-values-prod/dashboard-api.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: microservices
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

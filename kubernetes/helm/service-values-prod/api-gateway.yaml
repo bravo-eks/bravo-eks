@@ -1,0 +1,134 @@
+replicaCount: 2
+
+image:
+  repository: "083268669572.dkr.ecr.eu-west-2.amazonaws.com/api-gateway"
+  tag: "a846638d07be0e000e0cc513e4b730500a1e65ed"
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 8080
+    protocol: TCP
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  failureThreshold: 3
+
+env:
+  - name: ORDER_SERVICE_URL
+    value: "http://order-service-bravo-app:80"
+  - name: INVENTORY_SERVICE_URL
+    value: "http://inventory-service-bravo-app:80"
+  - name: PAYMENT_SERVICE_URL
+    value: "http://payment-service-bravo-app:80"
+  - name: NOTIFICATION_SERVICE_URL
+    value: "http://notification-service-bravo-app:80"
+  - name: SHIPPING_SERVICE_URL
+    value: "http://shipping-service-bravo-app:80"
+  - name: DASHBOARD_SERVICE_URL
+    value: "http://dashboard-api-bravo-app:80"
+
+envFrom:
+  - secretRef:
+      name: api-gateway-bravo-app
+
+configMap:
+  enabled: false
+
+externalSecret:
+  enabled: true
+  target:
+    template:
+      engineVersion: v2
+      data:
+        JWT_SECRET: '{{ .jwtSecret }}'
+        REDIS_URL: 'redis://:{{ .redisPassword | urlquery }}@redis.redis.svc.cluster.local:6379/0'
+  data:
+    - secretKey: jwtSecret
+      remoteRef:
+        key: bravo/prod/runtime
+        property: jwt_secret
+    - secretKey: redisPassword
+      remoteRef:
+        key: bravo/prod/runtime
+        property: redis_password
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+httpRoute:
+  enabled: false
+  parentRefs:
+    - name: bravo-gateway
+      namespace: traefik
+  hostnames:
+    - bravoorders.com
+  path:
+    type: PathPrefix
+    value: /
+
+ingress:
+  enabled: false
+  className: traefik
+  annotations: {}
+  hosts: []
+  tls: []
+
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - service: dashboard-api
+  egressTo:
+    - service: order-service
+      port: 8081
+    - service: inventory-service
+      port: 8082
+    - service: payment-service
+      port: 8083
+    - service: notification-service
+      port: 8084
+    - service: shipping-service
+      port: 8085
+    - service: dashboard-api
+      port: 8086
+  allowPostgres: false
+  allowRedis: true
+  allowExternalHTTPS: false

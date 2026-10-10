@@ -48,9 +48,9 @@ probes:
     initialDelaySeconds: 15
     periodSeconds: 10
 externalSecret:
-  enabled: true
+  enabled: false
   refreshInterval: 1h
-  remoteKey: bravo-dev-runtime
+  remoteKey: ""
   secretStoreRef:
     name: aws-secrets-manager
     kind: ClusterSecretStore

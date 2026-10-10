@@ -103,3 +103,8 @@ output "karpenter_controller_role_arn" {
   description = "IAM role ARN for the Karpenter controller"
   value       = module.iam.karpenter_controller_role_arn
 }
+
+output "eks_cluster_admin_principal_arns" {
+  description = "IAM principal ARNs granted administrator access to the Production EKS cluster."
+  value       = module.eks.cluster_admin_principal_arns
+}

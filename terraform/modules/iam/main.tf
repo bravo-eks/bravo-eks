@@ -283,7 +283,7 @@ data "aws_iam_policy_document" "external_dns_route53" {
     ]
 
     resources = [
-      "arn:aws:route53:::hostedzone/Z094258811V8WSH58ZFW5"
+      "arn:aws:route53:::hostedzone/Z07233161ST1D7BZE342O"
     ]
   }
 
@@ -302,6 +302,8 @@ data "aws_iam_policy_document" "external_dns_route53" {
 }
 
 resource "aws_iam_policy" "external_dns_route53" {
+  count = var.enable_external_dns_route53 ? 1 : 0
+
   name        = "${var.name_prefix}-external-dns-route53"
   description = "Allows ExternalDNS to manage Route53 records for bravoorders.com."
   policy      = data.aws_iam_policy_document.external_dns_route53.json
@@ -316,8 +318,10 @@ resource "aws_iam_policy" "external_dns_route53" {
 }
 
 resource "aws_iam_role_policy_attachment" "external_dns_route53" {
+  count = var.enable_external_dns_route53 ? 1 : 0
+
   role       = aws_iam_role.external_dns.name
-  policy_arn = aws_iam_policy.external_dns_route53.arn
+  policy_arn = aws_iam_policy.external_dns_route53[0].arn
 }
 
 

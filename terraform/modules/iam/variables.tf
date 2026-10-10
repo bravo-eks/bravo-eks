@@ -133,6 +133,12 @@ variable "external_secrets_secret_arns" {
 
 # ExternalDNS
 
+variable "enable_external_dns_route53" {
+  description = "Whether to grant ExternalDNS permissions to manage the Route 53 hosted zone."
+  type        = bool
+  default     = true
+}
+
 variable "external_dns_namespace" {
   description = "Kubernetes namespace used by ExternalDNS."
   type        = string

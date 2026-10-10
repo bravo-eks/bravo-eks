@@ -28,9 +28,9 @@ function renderCustomerProducts(){
     return;
   }
   grid.innerHTML=customerProducts.map(product=>{
-    const stock=availableStock(product),id=escapeHtml(product.id),name=escapeHtml(product.name||'Product'),sku=product.sku?'<span class="product-sku">SKU '+escapeHtml(product.sku)+'</span>':'',image=productImages[product.sku] || '';
+    const stock=availableStock(product),id=escapeHtml(product.id),name=escapeHtml(product.name||'Product'),sku=product.sku?'<span class="product-sku">SKU '+escapeHtml(product.sku)+'</span>':'';
 
-return '<article class="customer-product-card"><div class="product-art">'+(image?'<img src="'+image+'" alt="'+name+'" class="product-image">':'<span>B</span><i>BRAVO<br>ORDERS</i>')+'</div><div class="product-card-copy">'+sku+'<h2>'+name+'</h2><div class="product-price">'+money(product.price,product.currency||'GBP')+'</div><p class="product-stock">'+(stock>0?stock+' available':'Currently out of stock')+'</p><div class="product-card-actions"><label>Qty<input type="number" min="1" max="'+stock+'" value="1" data-product-quantity="'+id+'" '+(stock===0?'disabled':'')+' /></label><button class="primary-btn add-basket-btn" type="button" data-add-product="'+id+'" '+(stock===0?'disabled':'')+'>Add to basket</button></div></div></article>';
+    return '<article class="customer-product-card"><div class="product-art"><span>B</span><i>BRAVO<br>ORDERS</i></div><div class="product-card-copy">'+sku+'<h2>'+name+'</h2><div class="product-price">'+money(product.price,product.currency||'GBP')+'</div><p class="product-stock">'+(stock>0?stock+' available':'Currently out of stock')+'</p><div class="product-card-actions"><label>Qty<input type="number" min="1" max="'+stock+'" value="1" data-product-quantity="'+id+'" '+(stock===0?'disabled':'')+' /></label><button class="primary-btn add-basket-btn" type="button" data-add-product="'+id+'" '+(stock===0?'disabled':'')+'>Add to basket</button></div></div></article>';
   }).join('');
 }
 async function loadCustomerProducts(force=false){
@@ -54,16 +54,6 @@ async function loadCustomerProducts(force=false){
     });
     if(basketAdjusted)saveCustomerBasket();
     customerProductsLoaded=true;
-    
-    const productImages = {
-  'BRAVO-001': '/images/products/bravo-test-product.webp',
-  'BRAVO-002': '/images/products/wireless-keyboard.webp',
-  'BRAVO-003': '/images/products/usb-c-hub.webp',
-  'BRAVO-004': '/images/products/laptop-stand.webp',
-  'BRAVO-005': '/images/products/wireless-mouse.webp',
-  'BRAVO-006': '/images/products/desk-lamp.webp'
-
-};
     renderCustomerProducts();
     renderCustomerBasket();
     if(window.location.hash==='#customer-checkout')renderCheckout();
@@ -475,7 +465,7 @@ function openOrder(id){
 }
 
 function renderOrders(filter='all',q=''){const a=state.orders.filter(o=>(filter==='all'||o.status===filter)&&String(o.id+' '+o.customer_id).toLowerCase().includes(q.toLowerCase()));$('#ordersTable').innerHTML=a.map(orderRow).join('')||'<tr><td colspan="7">No orders found.</td></tr>';$('#recentOrders').innerHTML=state.orders.slice(0,5).map(orderRow).join('')}
-function renderInventory(){const av=p=>Number(p.available??(p.stock-p.reserved)),q=($('#inventorySearch')?.value||'').toLowerCase();$('#inventoryKpis').innerHTML=[['Units on hand',state.products.reduce((a,p)=>a+Number(p.stock||0),0)],['Units reserved',state.products.reduce((a,p)=>a+Number(p.reserved||0),0)],['Low-stock products',state.products.filter(p=>av(p)<10).length]].map(x=>'<div class="mini-card"><label>'+x[0]+'</label><strong>'+x[1]+'</strong></div>').join('');$('#inventoryTable').innerHTML=state.products.filter(p=>String(p.name+' '+p.sku).toLowerCase().includes(q)).map(p=>'<tr><td><b>'+p.name+'</b></td><td>'+p.sku+'</td><td>'+p.stock+'</td><td>'+p.reserved+'</td><td><b>'+av(p)+'</b></td><td>'+status(av(p)<10?'pending':'delivered')+'</td></tr>').join('')}
+function renderInventory(){const av=availableStock,q=($('#inventorySearch')?.value||'').toLowerCase();$('#inventoryKpis').innerHTML=[['Units on hand',state.products.reduce((a,p)=>a+Number(p.stock||0),0)],['Units reserved',state.products.reduce((a,p)=>a+Number(p.reserved||0),0)],['Low-stock products',state.products.filter(p=>av(p)<10).length]].map(x=>'<div class="mini-card"><label>'+x[0]+'</label><strong>'+x[1]+'</strong></div>').join('');$('#inventoryTable').innerHTML=state.products.filter(p=>String(p.name+' '+p.sku).toLowerCase().includes(q)).map(p=>'<tr><td><b>'+p.name+'</b></td><td>'+p.sku+'</td><td>'+p.stock+'</td><td>'+p.reserved+'</td><td><b>'+av(p)+'</b></td><td>'+(av(p)>0?'<span class="status" style="background:var(--green-soft);color:var(--green)">In stock</span>':'<span class="status" style="background:var(--red-soft);color:var(--red)">Out of stock</span>')+'</td></tr>').join('')}
 function renderShipments(){$('#shippingKpis').innerHTML='<div class="mini-card"><label>Active shipments</label><strong>'+state.shipments.filter(s=>s.status!=='delivered').length+'</strong></div>';$('#shipmentsTable').innerHTML=state.shipments.map(s=>'<tr><td><b>#'+s.id+'</b></td><td>#'+s.order_id+'</td><td>'+s.carrier+'</td><td>'+s.tracking_number+'</td><td>'+status(s.status)+'</td><td>'+(s.city||'')+', '+(s.country||'')+'</td><td>'+(s.estimated_delivery||'—')+'</td></tr>').join('')}
 function renderPayments(){const cr=state.ledger.reduce((a,e)=>a+Number(e.credit||0),0),dr=state.ledger.reduce((a,e)=>a+Number(e.debit||0),0);$('#paymentKpis').innerHTML=[['Gross credits',money(cr)],['Gross debits',money(dr)],['Net ledger',money(cr-dr)]].map(x=>'<div class="mini-card"><label>'+x[0]+'</label><strong>'+x[1]+'</strong></div>').join('');$('#paymentsTable').innerHTML=state.ledger.map(e=>'<tr><td><b>'+e.payment_id+'</b></td><td>'+label(e.entry_type)+'</td><td>'+e.description+'</td><td>'+(e.debit?money(e.debit,e.currency):'—')+'</td><td>'+(e.credit?money(e.credit,e.currency):'—')+'</td><td>'+new Date(e.created_at).toLocaleString()+'</td></tr>').join('')}
 function refundRequestStatusLabel(value){return ({requested:'Requested',approved:'Approved',rejected:'Rejected',refunded:'Refunded'})[String(value||'').toLowerCase()]||'Unknown'}
