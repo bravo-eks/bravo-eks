@@ -28,9 +28,9 @@ function renderCustomerProducts(){
     return;
   }
   grid.innerHTML=customerProducts.map(product=>{
-    const stock=availableStock(product),id=escapeHtml(product.id),name=escapeHtml(product.name||'Product'),sku=product.sku?'<span class="product-sku">SKU '+escapeHtml(product.sku)+'</span>':'',image=productImages[product.sku] || '';
+    const stock=availableStock(product),id=escapeHtml(product.id),name=escapeHtml(product.name||'Product'),sku=product.sku?'<span class="product-sku">SKU '+escapeHtml(product.sku)+'</span>':'';
 
-return '<article class="customer-product-card"><div class="product-art">'+(image?'<img src="'+image+'" alt="'+name+'" class="product-image">':'<span>B</span><i>BRAVO<br>ORDERS</i>')+'</div><div class="product-card-copy">'+sku+'<h2>'+name+'</h2><div class="product-price">'+money(product.price,product.currency||'GBP')+'</div><p class="product-stock">'+(stock>0?stock+' available':'Currently out of stock')+'</p><div class="product-card-actions"><label>Qty<input type="number" min="1" max="'+stock+'" value="1" data-product-quantity="'+id+'" '+(stock===0?'disabled':'')+' /></label><button class="primary-btn add-basket-btn" type="button" data-add-product="'+id+'" '+(stock===0?'disabled':'')+'>Add to basket</button></div></div></article>';
+    return '<article class="customer-product-card"><div class="product-art"><span>B</span><i>BRAVO<br>ORDERS</i></div><div class="product-card-copy">'+sku+'<h2>'+name+'</h2><div class="product-price">'+money(product.price,product.currency||'GBP')+'</div><p class="product-stock">'+(stock>0?stock+' available':'Currently out of stock')+'</p><div class="product-card-actions"><label>Qty<input type="number" min="1" max="'+stock+'" value="1" data-product-quantity="'+id+'" '+(stock===0?'disabled':'')+' /></label><button class="primary-btn add-basket-btn" type="button" data-add-product="'+id+'" '+(stock===0?'disabled':'')+'>Add to basket</button></div></div></article>';
   }).join('');
 }
 async function loadCustomerProducts(force=false){
@@ -54,16 +54,6 @@ async function loadCustomerProducts(force=false){
     });
     if(basketAdjusted)saveCustomerBasket();
     customerProductsLoaded=true;
-    
-    const productImages = {
-  'BRAVO-001': '/images/products/bravo-test-product.webp',
-  'BRAVO-002': '/images/products/wireless-keyboard.webp',
-  'BRAVO-003': '/images/products/usb-c-hub.webp',
-  'BRAVO-004': '/images/products/laptop-stand.webp',
-  'BRAVO-005': '/images/products/wireless-mouse.webp',
-  'BRAVO-006': '/images/products/desk-lamp.webp'
-
-};
     renderCustomerProducts();
     renderCustomerBasket();
     if(window.location.hash==='#customer-checkout')renderCheckout();
