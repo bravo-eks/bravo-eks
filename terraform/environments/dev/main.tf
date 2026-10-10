@@ -114,7 +114,5 @@ module "monitoring" {
   sqs_queue_name = "${local.name_prefix}-events"
   sqs_dlq_name   = "${local.name_prefix}-events-dlq"
 
-  alert_email = var.alert_email
-
   tags = local.tags
 }

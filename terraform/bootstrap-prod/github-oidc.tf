@@ -1,7 +1,5 @@
 data "aws_caller_identity" "current" {}
 
-# Production only: provider allowed_account_ids enforces Account B.
-
 resource "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 
@@ -14,24 +12,18 @@ resource "aws_iam_openid_connect_provider" "github" {
   ]
 }
 
-# ECR pipeline role
-
 resource "aws_iam_role" "github_ecr" {
   name = "bravo-prod-github-ecr"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-
     Statement = [
       {
         Effect = "Allow"
-
         Principal = {
           Federated = aws_iam_openid_connect_provider.github.arn
         }
-
         Action = "sts:AssumeRoleWithWebIdentity"
-
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
@@ -49,22 +41,16 @@ resource "aws_iam_role_policy" "github_ecr" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-
     Statement = [
       {
-        Sid    = "ECRAuth"
-        Effect = "Allow"
-
-        Action = [
-          "ecr:GetAuthorizationToken"
-        ]
-
+        Sid      = "ECRAuth"
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
         Resource = "*"
       },
       {
         Sid    = "ECRPushPull"
         Effect = "Allow"
-
         Action = [
           "ecr:BatchCheckLayerAvailability",
           "ecr:GetDownloadUrlForLayer",
@@ -74,31 +60,24 @@ resource "aws_iam_role_policy" "github_ecr" {
           "ecr:UploadLayerPart",
           "ecr:CompleteLayerUpload"
         ]
-
         Resource = values(module.ecr.repository_arns)
       }
     ]
   })
 }
 
-# Terraform PR pipeline role
-
 resource "aws_iam_role" "github_terraform_pr" {
   name = "bravo-prod-github-terraform-pr"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-
     Statement = [
       {
         Effect = "Allow"
-
         Principal = {
           Federated = aws_iam_openid_connect_provider.github.arn
         }
-
         Action = "sts:AssumeRoleWithWebIdentity"
-
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
@@ -116,141 +95,97 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-
     Statement = [
       {
         Sid    = "TerraformStateRead"
         Effect = "Allow"
-
-        Action = [
-          "s3:Get*",
-          "s3:List*"
-        ]
+        Action = ["s3:Get*", "s3:List*"]
         Resource = [
           aws_s3_bucket.terraform_state.arn,
           "${aws_s3_bucket.terraform_state.arn}/*"
         ]
       },
       {
-        Sid    = "EC2Read"
-        Effect = "Allow"
-
-        Action = [
-          "ec2:Describe*"
-        ]
-
+        Sid      = "EC2Read"
+        Effect   = "Allow"
+        Action   = ["ec2:Describe*"]
         Resource = "*"
       },
       {
         Sid    = "RDSRead"
         Effect = "Allow"
-
         Action = [
           "rds:Describe*",
           "rds:ListTagsForResource"
         ]
-
         Resource = "*"
       },
       {
         Sid    = "EKSRead"
         Effect = "Allow"
-
         Action = [
           "eks:Describe*",
           "eks:List*"
         ]
-
         Resource = "*"
       },
       {
         Sid    = "SQSRead"
         Effect = "Allow"
-
         Action = [
           "sqs:GetQueueAttributes",
           "sqs:GetQueueUrl",
           "sqs:ListQueues",
           "sqs:ListQueueTags"
         ]
-
         Resource = "*"
       },
       {
         Sid    = "ECRRead"
         Effect = "Allow"
-
         Action = [
           "ecr:DescribeRepositories",
           "ecr:GetLifecyclePolicy",
           "ecr:GetRepositoryPolicy",
           "ecr:ListTagsForResource"
         ]
-
         Resource = "*"
       },
       {
-        Sid    = "IAMRead"
-        Effect = "Allow"
-
-        Action = [
-          "iam:Get*",
-          "iam:List*"
-        ]
-
+        Sid      = "IAMRead"
+        Effect   = "Allow"
+        Action   = ["iam:Get*", "iam:List*"]
         Resource = "*"
       },
       {
         Sid    = "SecretsManagerRead"
         Effect = "Allow"
-
         Action = [
           "secretsmanager:DescribeSecret",
           "secretsmanager:GetResourcePolicy",
           "secretsmanager:GetSecretValue",
           "secretsmanager:ListSecretVersionIds"
         ]
-
-        Resource = "*"
-      },
-      {
-        Sid    = "SNSRead"
-        Effect = "Allow"
-
-        Action = [
-          "sns:GetTopicAttributes",
-          "sns:ListTagsForResource"
-        ]
-
         Resource = "*"
       },
       {
         Sid    = "CloudWatchRead"
         Effect = "Allow"
-
         Action = [
           "cloudwatch:DescribeAlarms",
           "cloudwatch:ListTagsForResource"
         ]
-
         Resource = "*"
       },
       {
-        Sid    = "VeleroS3Read"
-        Effect = "Allow"
-
-        Action = [
-          "s3:Get*",
-          "s3:List*"
-
-        ]
-
+        Sid      = "VeleroS3Read"
+        Effect   = "Allow"
+        Action   = ["s3:Get*", "s3:List*"]
         Resource = "arn:aws:s3:::bravo-eks-prod-velero-backups"
       },
       {
         Sid    = "KMSRead"
         Effect = "Allow"
-
         Action = [
           "kms:DescribeKey",
           "kms:GetKeyPolicy",
@@ -258,31 +193,24 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
           "kms:ListAliases",
           "kms:ListResourceTags"
         ]
-
         Resource = "*"
       }
     ]
   })
 }
 
-# Terraform deploy pipeline role
-
 resource "aws_iam_role" "github_terraform_deploy" {
   name = "bravo-prod-github-terraform-deploy"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-
     Statement = [
       {
         Effect = "Allow"
-
         Principal = {
           Federated = aws_iam_openid_connect_provider.github.arn
         }
-
         Action = "sts:AssumeRoleWithWebIdentity"
-
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
@@ -300,58 +228,61 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-
     Statement = [
       {
         Sid    = "TerraformState"
         Effect = "Allow"
-
         Action = [
           "s3:Get*",
           "s3:List*",
           "s3:PutObject",
           "s3:DeleteObject"
         ]
-
         Resource = [
           aws_s3_bucket.terraform_state.arn,
           "${aws_s3_bucket.terraform_state.arn}/*"
         ]
       },
-
-      # Velero state refresh
-
+      {
+        Sid    = "SNSRead"
+        Effect = "Allow"
+        Action = [
+          "sns:GetTopicAttributes",
+          "sns:ListTagsForResource"
+        ]
+        Resource = "arn:aws:sns:eu-west-2:083268669572:bravo-eks-production-alerts"
+      },
+      {
+        Sid    = "CloudWatchRead"
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource"
+        ]
+        Resource = "*"
+      },
       {
         Sid    = "VeleroS3Read"
         Effect = "Allow"
-
         Action = [
+          "s3:GetBucketPolicy",
           "s3:GetBucketLocation",
           "s3:GetBucketPublicAccessBlock",
           "s3:GetBucketVersioning",
           "s3:GetEncryptionConfiguration",
           "s3:ListBucket"
         ]
-
         Resource = "arn:aws:s3:::bravo-eks-prod-velero-backups"
       },
-
-      # VPC
-
       {
-        Sid    = "VPCRead"
-        Effect = "Allow"
-
-        Action = [
-          "ec2:Describe*"
-        ]
-
+        Sid      = "VPCRead"
+        Effect   = "Allow"
+        Action   = ["ec2:Describe*"]
         Resource = "*"
       },
       {
         Sid    = "VPCManage"
         Effect = "Allow"
-
         Action = [
           "ec2:CreateVpc",
           "ec2:DeleteVpc",
@@ -383,27 +314,20 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "ec2:CreateTags",
           "ec2:DeleteTags"
         ]
-
         Resource = "*"
       },
-
-      # RDS
-
       {
         Sid    = "RDSRead"
         Effect = "Allow"
-
         Action = [
           "rds:Describe*",
           "rds:ListTagsForResource"
         ]
-
         Resource = "*"
       },
       {
         Sid    = "RDSManage"
         Effect = "Allow"
-
         Action = [
           "rds:CreateDBInstance",
           "rds:ModifyDBInstance",
@@ -414,27 +338,20 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "rds:AddTagsToResource",
           "rds:RemoveTagsFromResource"
         ]
-
         Resource = "*"
       },
-
-      # EKS
-
       {
         Sid    = "EKSRead"
         Effect = "Allow"
-
         Action = [
           "eks:Describe*",
           "eks:List*"
         ]
-
         Resource = "*"
       },
       {
         Sid    = "EKSManage"
         Effect = "Allow"
-
         Action = [
           "eks:CreateCluster",
           "eks:UpdateClusterConfig",
@@ -450,29 +367,22 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "eks:TagResource",
           "eks:UntagResource"
         ]
-
         Resource = "*"
       },
-
-      # SQS
-
       {
         Sid    = "SQSRead"
         Effect = "Allow"
-
         Action = [
           "sqs:GetQueueAttributes",
           "sqs:GetQueueUrl",
           "sqs:ListQueues",
           "sqs:ListQueueTags"
         ]
-
         Resource = "*"
       },
       {
         Sid    = "SQSManage"
         Effect = "Allow"
-
         Action = [
           "sqs:CreateQueue",
           "sqs:DeleteQueue",
@@ -480,27 +390,17 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "sqs:TagQueue",
           "sqs:UntagQueue"
         ]
-
         Resource = "*"
       },
-
-      # IAM
-
       {
-        Sid    = "IAMRead"
-        Effect = "Allow"
-
-        Action = [
-          "iam:Get*",
-          "iam:List*"
-        ]
-
+        Sid      = "IAMRead"
+        Effect   = "Allow"
+        Action   = ["iam:Get*", "iam:List*"]
         Resource = "*"
       },
       {
         Sid    = "IAMManage"
         Effect = "Allow"
-
         Action = [
           "iam:CreateRole",
           "iam:DeleteRole",
@@ -521,16 +421,11 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "iam:UntagPolicy",
           "iam:CreateServiceLinkedRole"
         ]
-
         Resource = "*"
       },
-
-      # ECR
-
       {
         Sid    = "ECRManage"
         Effect = "Allow"
-
         Action = [
           "ecr:CreateRepository",
           "ecr:DeleteRepository",
@@ -542,16 +437,11 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "ecr:GetLifecyclePolicy",
           "ecr:DeleteLifecyclePolicy"
         ]
-
         Resource = "*"
       },
-
-      # KMS
-
       {
         Sid    = "KMSManage"
         Effect = "Allow"
-
         Action = [
           "kms:CreateKey",
           "kms:DescribeKey",
@@ -569,42 +459,30 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "kms:CreateGrant",
           "kms:CancelKeyDeletion"
         ]
-
         Resource = "*"
       },
-
-      # Secrets Manager
-
       {
         Sid    = "SecretsManagerRead"
         Effect = "Allow"
-
         Action = [
           "secretsmanager:DescribeSecret",
           "secretsmanager:GetResourcePolicy",
           "secretsmanager:ListSecretVersionIds"
         ]
-
         Resource = "*"
       },
       {
         Sid    = "SecretsManagerManage"
         Effect = "Allow"
-
         Action = [
           "secretsmanager:CreateSecret",
           "secretsmanager:TagResource"
         ]
-
         Resource = "*"
       },
-
-      # EKS OIDC
-
       {
         Sid    = "OIDCManage"
         Effect = "Allow"
-
         Action = [
           "iam:CreateOpenIDConnectProvider",
           "iam:GetOpenIDConnectProvider",
@@ -615,9 +493,8 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
           "iam:TagOpenIDConnectProvider",
           "iam:UntagOpenIDConnectProvider"
         ]
-
         Resource = "*"
-      },
+      }
     ]
   })
 }
