@@ -79,48 +79,61 @@ jobs:
           filters: |
             api-gateway:
               - 'services/api-gateway/**'
-              - '.github/workflows/build.yaml'
 
             dashboard-api:
               - 'services/dashboard-api/**'
-              - '.github/workflows/build.yaml'
 
             inventory-service:
               - 'services/inventory-service/**'
-              - '.github/workflows/build.yaml'
 
             notification-service:
               - 'services/notification-service/**'
-              - '.github/workflows/build.yaml'
 
             order-service:
               - 'services/order-service/**'
-              - '.github/workflows/build.yaml'
 
             payment-service:
               - 'services/payment-service/**'
-              - '.github/workflows/build.yaml'
 
             scheduler:
               - 'services/scheduler/**'
-              - '.github/workflows/build.yaml'
 
             shipping-service:
               - 'services/shipping-service/**'
-              - '.github/workflows/build.yaml'
 
             worker:
               - 'services/worker/**'
-              - '.github/workflows/build.yaml'
 
       - name: Set service matrix
         id: set-services
         env:
           EVENT_NAME: ${{ github.event_name }}
+          COMMIT_SHA: ${{ github.sha }}
           CHANGED_SERVICES: ${{ steps.filter.outputs.changes }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo 'services=["api-gateway","dashboard-api","inventory-service","notification-service","order-service","payment-service","scheduler","shipping-service","worker"]' >> "$GITHUB_OUTPUT"
+            if ! git cat-file -e "${COMMIT_SHA}^{commit}" 2>/dev/null; then
+              echo "Selected commit is unavailable in the checkout: $COMMIT_SHA" >&2
+              exit 1
+            fi
+            if git rev-parse --verify "${COMMIT_SHA}^1" >/dev/null 2>&1; then
+              base_commit="${COMMIT_SHA}^1"
+            else
+              base_commit="$(git hash-object -t tree /dev/null)"
+            fi
+            if ! changed_paths="$(git diff --name-only "$base_commit" "$COMMIT_SHA")"; then
+              echo "Could not determine changed paths for selected commit $COMMIT_SHA." >&2
+              exit 1
+            fi
+            services_json='['
+            separator=''
+            for service in api-gateway dashboard-api inventory-service notification-service order-service payment-service scheduler shipping-service worker; do
+              if grep -q "^services/${service}/" <<< "$changed_paths"; then
+                services_json+="${separator}\"${service}\""
+                separator=','
+              fi
+            done
+            printf 'services=%s]\n' "$services_json" >> "$GITHUB_OUTPUT"
           else
             echo "services=$CHANGED_SERVICES" >> "$GITHUB_OUTPUT"
           fi
@@ -168,7 +181,7 @@ jobs:
       #     ignore-unfixed: true
       #     exit-code: "1"
 
-  # Manual: build, scan and push all selected services to ECR
+  # Manual: build, scan and push only changed services to ECR
   build-scan-push-manual:
     name: Manual Build, Scan and Push - ${{ matrix.service }}
     needs: detect-changes
