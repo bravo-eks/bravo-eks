@@ -61,7 +61,7 @@ externalSecret:
   data:
     - secretKey: DATABASE_URL
       remoteRef:
-        key: TODO_PROD_SECRET_PATH_SCHEDULER_DATABASE_URL
+        key: bravo/prod/scheduler/database
         property: DATABASE_URL
 
 autoscaling:

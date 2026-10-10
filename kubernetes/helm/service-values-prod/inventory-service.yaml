@@ -64,7 +64,7 @@ externalSecret:
   data:
     - secretKey: DATABASE_URL
       remoteRef:
-        key: TODO_PROD_SECRET_PATH_INVENTORY_SERVICE_DATABASE_URL
+        key: bravo/prod/inventory-service/database
         property: DATABASE_URL
 
 autoscaling:

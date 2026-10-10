@@ -74,7 +74,7 @@ externalSecret:
   data:
     - secretKey: DATABASE_URL
       remoteRef:
-        key: TODO_PROD_SECRET_PATH_PAYMENT_SERVICE_DATABASE_URL
+        key: bravo/prod/payment-service/database
         property: DATABASE_URL
 
 autoscaling:
