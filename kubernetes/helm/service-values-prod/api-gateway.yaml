@@ -77,11 +77,11 @@ externalSecret:
   data:
     - secretKey: jwtSecret
       remoteRef:
-        key: TODO_PROD_SECRET_PATH_RUNTIME
+        key: bravo/prod/runtime
         property: jwt_secret
     - secretKey: redisPassword
       remoteRef:
-        key: TODO_PROD_SECRET_PATH_RUNTIME
+        key: bravo/prod/runtime
         property: redis_password
 
 autoscaling:

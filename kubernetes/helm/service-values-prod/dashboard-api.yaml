@@ -73,7 +73,7 @@ externalSecret:
   data:
     - secretKey: DATABASE_URL
       remoteRef:
-        key: TODO_PROD_SECRET_PATH_DASHBOARD_API_DATABASE_URL
+        key: bravo/prod/dashboard-api/database
         property: DATABASE_URL
 
 autoscaling:
