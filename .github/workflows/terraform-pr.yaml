@@ -70,25 +70,35 @@ jobs:
         run: |
           targets=()
           run_all_checks=false
+
           if [ "$TERRAFORM_PR_WORKFLOW" = "true" ] || [ "$TERRAFORM_DEPLOY_WORKFLOW" = "true" ]; then
             run_all_checks=true
           fi
 
+          # Environment changes affect only their environment.
+          # Shared module changes affect both environments.
           if [ "$DEV_ENVIRONMENT" = "true" ] || [ "$MODULES" = "true" ] || [ "$run_all_checks" = "true" ]; then
             targets+=("dev")
           fi
+
           if [ "$PROD_ENVIRONMENT" = "true" ] || [ "$MODULES" = "true" ] || [ "$run_all_checks" = "true" ]; then
             targets+=("prod")
           fi
-          if [ "$DEV_BOOTSTRAP" = "true" ] || [ "$MODULES" = "true" ] || [ "$run_all_checks" = "true" ]; then
+
+          # Bootstrap stacks are independent from shared environment modules.
+          # Only run them when their own files change, or when a Terraform
+          # workflow change requires all targets to be validated.
+          if [ "$DEV_BOOTSTRAP" = "true" ] || [ "$run_all_checks" = "true" ]; then
             targets+=("bootstrap-dev")
           fi
-          if [ "$PROD_BOOTSTRAP" = "true" ] || [ "$MODULES" = "true" ] || [ "$run_all_checks" = "true" ]; then
+
+          if [ "$PROD_BOOTSTRAP" = "true" ] || [ "$run_all_checks" = "true" ]; then
             targets+=("bootstrap-prod")
           fi
 
           targets_json="["
           separator=""
+
           for target in "${targets[@]}"; do
             case "$target" in
               dev)
@@ -103,11 +113,16 @@ jobs:
               bootstrap-prod)
                 target_json='{"environment":"bootstrap-prod","expected_account":"083268669572","role_arn":"arn:aws:iam::083268669572:role/bravo-prod-github-terraform-pr","tf_dir":"./terraform/bootstrap-prod"}'
                 ;;
-              *) echo "Unsupported Terraform target: $target" >&2; exit 1 ;;
+              *)
+                echo "Unsupported Terraform target: $target" >&2
+                exit 1
+                ;;
             esac
+
             targets_json="${targets_json}${separator}${target_json}"
             separator=","
           done
+
           targets_json="${targets_json}]"
           echo "targets=$targets_json" >> "$GITHUB_OUTPUT"
 
@@ -170,8 +185,12 @@ jobs:
             bootstrap-prod)
               expected_mapping="083268669572|arn:aws:iam::083268669572:role/bravo-prod-github-terraform-pr|./terraform/bootstrap-prod"
               ;;
-            *) echo "Unsupported Terraform target: $TARGET" >&2; exit 1 ;;
+            *)
+              echo "Unsupported Terraform target: $TARGET" >&2
+              exit 1
+              ;;
           esac
+
           if [ "$EXPECTED_ACCOUNT|$ROLE_ARN|$TF_DIR" != "$expected_mapping" ]; then
             echo "Terraform account, role, or directory does not match target '$TARGET'." >&2
             exit 1
@@ -188,8 +207,10 @@ jobs:
           EXPECTED_AWS_ACCOUNT: ${{ matrix.target.expected_account }}
         run: |
           actual_account="$(aws sts get-caller-identity --query Account --output text)"
+
           echo "Expected AWS account: $EXPECTED_AWS_ACCOUNT"
           echo "Authenticated AWS account: $actual_account"
+
           if [ "$actual_account" != "$EXPECTED_AWS_ACCOUNT" ]; then
             echo "AWS account mismatch; refusing to access Terraform state or resources." >&2
             exit 1

@@ -8,10 +8,10 @@ domainFilters:
   - "bravoorders.com"
 
 zoneIdFilters:
-  - "Z094258811V8WSH58ZFW5"
+  - "Z07233161ST1D7BZE342O"
 
 registry: txt
-txtOwnerId: "bravo-eks"
+txtOwnerId: "bravo-eks-prod"
 
 policy: sync
 
@@ -19,7 +19,7 @@ serviceAccount:
   create: true
   name: external-dns
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::304960797322:role/bravo-dev-external-dns"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::083268669572:role/bravo-eks-production-external-dns"
 
 resources:
   requests:

@@ -283,7 +283,7 @@ data "aws_iam_policy_document" "external_dns_route53" {
     ]
 
     resources = [
-      "arn:aws:route53:::hostedzone/Z094258811V8WSH58ZFW5"
+      "arn:aws:route53:::hostedzone/Z07233161ST1D7BZE342O"
     ]
   }
 

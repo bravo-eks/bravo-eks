@@ -44,8 +44,7 @@ module "iam" {
 
   cluster_name = module.eks.cluster_name
 
-  # Keep production DNS changes disabled until the separate DNS cutover.
-  enable_external_dns_route53 = false
+  enable_external_dns_route53 = true
 
   kubernetes_namespace           = var.kubernetes_namespace
   order_service_account_name     = var.order_service_account_name
@@ -60,7 +59,10 @@ module "iam" {
     module.sqs.queue_arn
   ]
 
-  external_secrets_secret_arns = [module.rds.master_user_secret_arn]
+  external_secrets_secret_arns = [
+    module.rds.master_user_secret_arn,
+    "arn:aws:secretsmanager:eu-west-2:083268669572:secret:bravo/prod/*"
+  ]
 
   velero_backup_bucket_arn = module.velero.bucket_arn
   tags                     = var.tags

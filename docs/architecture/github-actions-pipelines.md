@@ -55,11 +55,11 @@ This is the Terraform review and planning stage. Static formatting and Checkov c
 | `terraform/environments/prod/**` | PROD environment |
 | `terraform/bootstrap-dev/**` | DEV bootstrap |
 | `terraform/bootstrap-prod/**` | PROD bootstrap |
-| `terraform/modules/**` | DEV and PROD environments; DEV and PROD bootstrap |
+| `terraform/modules/**` | DEV and PROD environment plans |
 | `.github/workflows/terraform-pr.yaml` or `terraform-deploy.yaml` | All four targets |
 | Multiple paths | Union of the affected targets |
 
-Module changes include bootstrap plans because both bootstrap roots consume `terraform/modules/ecr`. PR plans use the DEV or PROD Terraform PR role according to the target:
+Shared module changes trigger the DEV and PROD environment plans only. Bootstrap plans run only when their corresponding bootstrap paths change, or when a Terraform workflow change requires all four targets to be validated. For multiple changed paths, the workflow runs the union of the targets affected by each path. PR plans use the DEV or PROD Terraform PR role according to the target:
 
 - DEV: `arn:aws:iam::304960797322:role/bravo-github-terraform-pr`
 - PROD: `arn:aws:iam::083268669572:role/bravo-prod-github-terraform-pr`
