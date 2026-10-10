@@ -17,7 +17,7 @@ Workflow: [build.yaml](../../.github/workflows/build.yaml)
 
 ### Pull requests
 
-For changed services, the workflow builds images locally. It does not authenticate to AWS or push to ECR. The Trivy scan step is currently commented out, so no image scan runs at this time.
+For changed services, the workflow builds images locally and never authenticates to AWS or pushes to ECR. Changes outside supported service directories do not select services. The Trivy scan step is currently commented out, so no image scan runs at this time.
 
 ```mermaid
 flowchart LR
@@ -28,20 +28,20 @@ flowchart LR
 
 ### Pushes to `main`
 
-When service or workflow paths change on `main`, the workflow detects changed services and publishes those images to **DEV only**. Its target is explicitly `Development`, using the DEV ECR role/account. It checks the STS account after authentication and checks the ECR registry after login and again before pushing.
+When service paths change on `main`, the workflow detects only the changed services and publishes those images to **DEV only**. Changes outside supported service directories, including workflow-file-only changes, do not select services. Its target is explicitly `Development`, using the DEV ECR role/account. It checks the STS account after authentication and checks the ECR registry after login and again before pushing.
 
 PROD is never selected automatically.
 
 ### Manual publishing
 
-`workflow_dispatch` requires an explicit `dev` or `prod` choice. The selected target determines the GitHub Environment and expected role, account, and registry. The workflow validates the target mapping and `AWS_ROLE_ARN` before authenticating, then verifies AWS identity and ECR registry before building/pushing.
+`workflow_dispatch` requires an explicit `dev` or `prod` choice. The selected target determines the GitHub Environment and expected role, account, and registry; it does not select or rebuild all services. The workflow detects service changes between the selected commit and its first parent, then builds and pushes only the changed supported services. Multiple changed services are built and pushed in the same run, and unchanged services are not rebuilt or pushed. The workflow validates the target mapping and `AWS_ROLE_ARN` before authenticating, then verifies AWS identity and ECR registry before building/pushing.
 
 | Selection | GitHub Environment | AWS account | IAM role | ECR registry |
 |---|---|---:|---|---|
 | `dev` | `Development` | `304960797322` | `arn:aws:iam::304960797322:role/bravo-github-ecr` | `304960797322.dkr.ecr.eu-west-2.amazonaws.com` |
 | `prod` | `Production` | `083268669572` | `arn:aws:iam::083268669572:role/bravo-prod-github-ecr` | `083268669572.dkr.ecr.eu-west-2.amazonaws.com` |
 
-Manual publishing builds all nine services configured in the workflow. Unknown selections fail rather than choosing an account. The ECR URI uses the authenticated registry; account and registry are both checked again immediately before `docker push`.
+Production publishing remains explicit and manual only. Unknown selections fail rather than choosing an account. The ECR URI uses the authenticated registry; account and registry are both checked again immediately before `docker push`.
 
 ## Terraform PR checks
 
@@ -110,8 +110,8 @@ Separate AWS accounts and roles, explicit target mappings, STS account checks, a
 
 | Pipeline | Trigger | DEV | PROD | Can modify AWS? |
 |---|---|---|---|---|
-| Build PR | Pull request | Local build | Local build | No |
+| Build PR | Pull request | Changed-service local build | Changed-service local build | No |
 | Build on `main` | Push to `main` | Automatic DEV ECR publishing | Never automatic | DEV ECR only |
-| Build manual | `workflow_dispatch` | Explicit `dev` | Explicit `prod` | ECR only |
+| Build manual | `workflow_dispatch` | Changed services to DEV ECR | Changed services to PROD ECR (manual only) | ECR only |
 | Terraform PR | Pull request | Affected DEV plans | Affected PROD plans | No apply |
 | Terraform Deploy | `workflow_dispatch` | Explicit `dev` / `bootstrap-dev` | Explicit `prod` / `bootstrap-prod` | Yes |
