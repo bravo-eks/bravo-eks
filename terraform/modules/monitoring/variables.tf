@@ -41,13 +41,6 @@ variable "sqs_queue_depth_threshold" {
   default     = 100
 }
 
-variable "alert_email" {
-  description = "Optional email address for CloudWatch alarm notifications."
-  type        = string
-  default     = null
-  nullable    = true
-}
-
 variable "tags" {
   description = "Tags applied to monitoring resources."
   type        = map(string)

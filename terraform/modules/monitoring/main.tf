@@ -1,17 +1,3 @@
-resource "aws_sns_topic" "alerts" {
-  name = "${var.project_name}-${var.environment}-alerts"
-
-  tags = var.tags
-}
-
-resource "aws_sns_topic_subscription" "email" {
-  count = var.alert_email == null ? 0 : 1
-
-  topic_arn = aws_sns_topic.alerts.arn
-  protocol  = "email"
-  endpoint  = var.alert_email
-}
-
 # -------------------------
 # RDS alarms
 # -------------------------
@@ -31,8 +17,6 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
     DBInstanceIdentifier = var.rds_instance_identifier
   }
 
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
 
   tags = var.tags
 }
@@ -52,8 +36,6 @@ resource "aws_cloudwatch_metric_alarm" "rds_free_storage" {
     DBInstanceIdentifier = var.rds_instance_identifier
   }
 
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
 
   tags = var.tags
 }
@@ -77,8 +59,6 @@ resource "aws_cloudwatch_metric_alarm" "sqs_queue_depth" {
     QueueName = var.sqs_queue_name
   }
 
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
 
   tags = var.tags
 }
@@ -98,8 +78,6 @@ resource "aws_cloudwatch_metric_alarm" "sqs_dlq_messages" {
     QueueName = var.sqs_dlq_name
   }
 
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
 
   tags = var.tags
 }

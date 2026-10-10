@@ -104,7 +104,5 @@ module "monitoring" {
   sqs_queue_name = var.sqs_queue_name
   sqs_dlq_name   = "${var.sqs_queue_name}-dlq"
 
-  alert_email = var.alert_email
-
   tags = var.tags
 }
