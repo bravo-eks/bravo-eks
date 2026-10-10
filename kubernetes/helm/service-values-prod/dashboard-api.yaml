@@ -1,3 +1,13 @@
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    nodeAffinityPolicy: Honor
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: bravo-app
+        app.kubernetes.io/instance: dashboard-api
+
 replicaCount: 2
 
 image:
@@ -73,7 +83,7 @@ externalSecret:
   data:
     - secretKey: DATABASE_URL
       remoteRef:
-        key: TODO_PROD_SECRET_PATH_DASHBOARD_API_DATABASE_URL
+        key: bravo/prod/dashboard-api/database
         property: DATABASE_URL
 
 autoscaling:
@@ -94,7 +104,7 @@ httpRoute:
     - name: bravo-gateway
       namespace: traefik
   hostnames:
-    - bravoorders.com
+    - shop.bravoorders.com
   path:
     type: PathPrefix
     value: /
