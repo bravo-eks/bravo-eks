@@ -26,7 +26,7 @@ system_node_min_size       = 1
 system_node_max_size       = 3
 
 # IAM
-kubernetes_namespace          = "default"
+kubernetes_namespace          = "microservices"
 order_service_account_name    = "order-service"
 payment_service_account_name  = "payment-service"
 shipping_service_account_name = "shipping-service"
