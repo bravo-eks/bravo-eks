@@ -5,7 +5,7 @@ topologySpreadConstraints:
     nodeAffinityPolicy: Honor
     labelSelector:
       matchLabels:
-        app.kubernetes.io/name: microservices
+        app.kubernetes.io/name: bravo-app
         app.kubernetes.io/instance: dashboard-api
 
 replicaCount: 2
