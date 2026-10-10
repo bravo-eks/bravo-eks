@@ -1,3 +1,13 @@
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    nodeAffinityPolicy: Honor
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: bravo-app
+        app.kubernetes.io/instance: worker
+
 replicaCount: 1
 
 image:
