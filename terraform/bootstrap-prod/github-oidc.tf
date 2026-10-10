@@ -245,7 +245,8 @@ resource "aws_iam_role_policy" "github_terraform_pr" {
           "s3:GetBucketPublicAccessBlock",
           "s3:GetBucketVersioning",
           "s3:GetEncryptionConfiguration",
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:GetBucketAcl"
         ]
 
         Resource = "arn:aws:s3:::bravo-eks-prod-velero-backups"
