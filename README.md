@@ -48,7 +48,7 @@ The architecture diagram below provides the high-level view of how the applicati
 
 ### Architecture Diagram
 
-![Architecture Diagram](bravo-eks/images/Bravo-Diagram.jpeg)
+![Architecture Diagram](images/Bravo-Diagram.jpeg)
 
 `docs/architecture/`
 
