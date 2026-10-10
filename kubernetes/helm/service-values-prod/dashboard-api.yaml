@@ -94,7 +94,7 @@ httpRoute:
     - name: bravo-gateway
       namespace: traefik
   hostnames:
-    - bravoorders.com
+    - shop.bravoorders.com
   path:
     type: PathPrefix
     value: /

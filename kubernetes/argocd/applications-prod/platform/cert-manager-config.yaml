@@ -11,11 +11,17 @@ spec:
   project: bravo-prod-platform
 
   source:
-    repoURL: https://github.com/bravo-eks/bravo-eks.git
-    targetRevision: main
-    path: kubernetes/platform/cert-manager
-    directory:
-      include: "{clusterissuer.yaml,certificate.yaml}"
+    - repoURL: https://github.com/bravo-eks/bravo-eks.git
+      targetRevision: main
+      path: kubernetes/platform/cert-manager
+      directory:
+        include: clusterissuer.yaml
+
+    - repoURL: https://github.com/bravo-eks/bravo-eks.git
+      targetRevision: main
+      path: kubernetes/platform/prod/cert-manager
+      directory:
+        include: certificate.yaml
 
   destination:
     server: https://kubernetes.default.svc
