@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - "terraform/bootstrap/**"
+      - "terraform/bootstrap-dev/**"
+      - "terraform/bootstrap-prod/**"
       - "terraform/environments/dev/**"
       - "terraform/environments/prod/**"
       - "terraform/modules/**"
@@ -15,6 +16,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  pull-requests: read
 
 concurrency:
   group: terraform-pr-${{ github.event.pull_request.number }}
@@ -26,41 +28,112 @@ env:
   TF_INPUT: false
 
 jobs:
-  terraform-checks:
-    name: Terraform ${{ matrix.environment }} Plan
+  detect-changes:
+    name: Detect Terraform Changes
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        environment:
-          - dev
-          - prod
+    outputs:
+      targets: ${{ steps.set-targets.outputs.targets }}
+
+    steps:
+      - name: Detect changed Terraform paths
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            dev_environment:
+              - 'terraform/environments/dev/**'
+            prod_environment:
+              - 'terraform/environments/prod/**'
+            dev_bootstrap:
+              - 'terraform/bootstrap-dev/**'
+            prod_bootstrap:
+              - 'terraform/bootstrap-prod/**'
+            modules:
+              - 'terraform/modules/**'
+            terraform_pr_workflow:
+              - '.github/workflows/terraform-pr.yaml'
+            terraform_deploy_workflow:
+              - '.github/workflows/terraform-deploy.yaml'
+
+      - name: Build explicit Terraform target matrix
+        id: set-targets
+        env:
+          DEV_ENVIRONMENT: ${{ steps.filter.outputs.dev_environment }}
+          PROD_ENVIRONMENT: ${{ steps.filter.outputs.prod_environment }}
+          DEV_BOOTSTRAP: ${{ steps.filter.outputs.dev_bootstrap }}
+          PROD_BOOTSTRAP: ${{ steps.filter.outputs.prod_bootstrap }}
+          MODULES: ${{ steps.filter.outputs.modules }}
+          TERRAFORM_PR_WORKFLOW: ${{ steps.filter.outputs.terraform_pr_workflow }}
+          TERRAFORM_DEPLOY_WORKFLOW: ${{ steps.filter.outputs.terraform_deploy_workflow }}
+        shell: bash
+        run: |
+          targets=()
+          run_all_checks=false
+
+          if [ "$TERRAFORM_PR_WORKFLOW" = "true" ] || [ "$TERRAFORM_DEPLOY_WORKFLOW" = "true" ]; then
+            run_all_checks=true
+          fi
+
+          # Environment changes affect only their environment.
+          # Shared module changes affect both environments.
+          if [ "$DEV_ENVIRONMENT" = "true" ] || [ "$MODULES" = "true" ] || [ "$run_all_checks" = "true" ]; then
+            targets+=("dev")
+          fi
+
+          if [ "$PROD_ENVIRONMENT" = "true" ] || [ "$MODULES" = "true" ] || [ "$run_all_checks" = "true" ]; then
+            targets+=("prod")
+          fi
+
+          # Bootstrap stacks are independent from shared environment modules.
+          # Only run them when their own files change, or when a Terraform
+          # workflow change requires all targets to be validated.
+          if [ "$DEV_BOOTSTRAP" = "true" ] || [ "$run_all_checks" = "true" ]; then
+            targets+=("bootstrap-dev")
+          fi
+
+          if [ "$PROD_BOOTSTRAP" = "true" ] || [ "$run_all_checks" = "true" ]; then
+            targets+=("bootstrap-prod")
+          fi
+
+          targets_json="["
+          separator=""
+
+          for target in "${targets[@]}"; do
+            case "$target" in
+              dev)
+                target_json='{"environment":"dev","expected_account":"304960797322","role_arn":"arn:aws:iam::304960797322:role/bravo-github-terraform-pr","tf_dir":"./terraform/environments/dev"}'
+                ;;
+              prod)
+                target_json='{"environment":"prod","expected_account":"083268669572","role_arn":"arn:aws:iam::083268669572:role/bravo-prod-github-terraform-pr","tf_dir":"./terraform/environments/prod"}'
+                ;;
+              bootstrap-dev)
+                target_json='{"environment":"bootstrap-dev","expected_account":"304960797322","role_arn":"arn:aws:iam::304960797322:role/bravo-github-terraform-pr","tf_dir":"./terraform/bootstrap-dev"}'
+                ;;
+              bootstrap-prod)
+                target_json='{"environment":"bootstrap-prod","expected_account":"083268669572","role_arn":"arn:aws:iam::083268669572:role/bravo-prod-github-terraform-pr","tf_dir":"./terraform/bootstrap-prod"}'
+                ;;
+              *)
+                echo "Unsupported Terraform target: $target" >&2
+                exit 1
+                ;;
+            esac
+
+            targets_json="${targets_json}${separator}${target_json}"
+            separator=","
+          done
+
+          targets_json="${targets_json}]"
+          echo "targets=$targets_json" >> "$GITHUB_OUTPUT"
+
+  terraform-static-checks:
+    name: Terraform Static Checks
+    runs-on: ubuntu-latest
+    needs: detect-changes
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      - name: Show OIDC subject
-        shell: bash
-        run: |
-          TOKEN=$(curl -sS \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
-            | jq -r '.value')
-
-          PAYLOAD=$(echo "$TOKEN" | cut -d '.' -f2)
-
-          python3 -c "
-          import base64, json
-          p='$PAYLOAD'
-          p += '=' * (-len(p) % 4)
-          print(json.loads(base64.urlsafe_b64decode(p))['sub'])
-          "
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6.1.0
-        with:
-          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-pr
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -68,96 +141,109 @@ jobs:
       - name: Terraform Format Check
         run: terraform fmt -check -recursive terraform/
 
-      - name: Terraform Init
-        working-directory: ./terraform/environments/${{ matrix.environment }}
-        run: terraform init
-
-      - name: Terraform Validate
-        working-directory: ./terraform/environments/${{ matrix.environment }}
-        run: terraform validate
-
       - name: Install Checkov
         run: pip install checkov
 
       - name: Run Checkov
         run: checkov -d terraform --framework terraform --soft-fail
 
-      - name: Terraform Plan
-        working-directory: ./terraform/environments/${{ matrix.environment }}
-        run: terraform plan -lock=false -out=tfplan
-
-      - name: Show Terraform Plan
-        working-directory: ./terraform/environments/${{ matrix.environment }}
-        run: terraform show -no-color tfplan
-
-      - name: Add Terraform Plan to Summary
-        if: always()
-        working-directory: ./terraform/environments/${{ matrix.environment }}
-        run: |
-          echo "## Terraform ${{ matrix.environment }} Plan" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-
-          if [ -f tfplan ]; then
-            echo "Review the proposed ${{ matrix.environment }} infrastructure changes before merging." >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo '```terraform' >> "$GITHUB_STEP_SUMMARY"
-            terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Terraform plan was not generated. Check the failed workflow step." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-  terraform-bootstrap-checks:
-    name: Terraform Bootstrap Plan
+  terraform-checks:
+    name: Terraform ${{ matrix.target.environment }} Plan
     runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - terraform-static-checks
+    if: needs.detect-changes.outputs.targets != '[]'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.detect-changes.outputs.targets) }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Validate Terraform target mapping
+        env:
+          TARGET: ${{ matrix.target.environment }}
+          EXPECTED_ACCOUNT: ${{ matrix.target.expected_account }}
+          ROLE_ARN: ${{ matrix.target.role_arn }}
+          TF_DIR: ${{ matrix.target.tf_dir }}
+        shell: bash
+        run: |
+          case "$TARGET" in
+            dev)
+              expected_mapping="304960797322|arn:aws:iam::304960797322:role/bravo-github-terraform-pr|./terraform/environments/dev"
+              ;;
+            prod)
+              expected_mapping="083268669572|arn:aws:iam::083268669572:role/bravo-prod-github-terraform-pr|./terraform/environments/prod"
+              ;;
+            bootstrap-dev)
+              expected_mapping="304960797322|arn:aws:iam::304960797322:role/bravo-github-terraform-pr|./terraform/bootstrap-dev"
+              ;;
+            bootstrap-prod)
+              expected_mapping="083268669572|arn:aws:iam::083268669572:role/bravo-prod-github-terraform-pr|./terraform/bootstrap-prod"
+              ;;
+            *)
+              echo "Unsupported Terraform target: $TARGET" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ "$EXPECTED_ACCOUNT|$ROLE_ARN|$TF_DIR" != "$expected_mapping" ]; then
+            echo "Terraform account, role, or directory does not match target '$TARGET'." >&2
+            exit 1
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
-          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-pr
+          role-to-assume: ${{ matrix.target.role_arn }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS account
+        env:
+          EXPECTED_AWS_ACCOUNT: ${{ matrix.target.expected_account }}
+        run: |
+          actual_account="$(aws sts get-caller-identity --query Account --output text)"
+
+          echo "Expected AWS account: $EXPECTED_AWS_ACCOUNT"
+          echo "Authenticated AWS account: $actual_account"
+
+          if [ "$actual_account" != "$EXPECTED_AWS_ACCOUNT" ]; then
+            echo "AWS account mismatch; refusing to access Terraform state or resources." >&2
+            exit 1
+          fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive terraform/bootstrap
-
       - name: Terraform Init
-        working-directory: ./terraform/bootstrap
+        working-directory: ${{ matrix.target.tf_dir }}
         run: terraform init
 
       - name: Terraform Validate
-        working-directory: ./terraform/bootstrap
+        working-directory: ${{ matrix.target.tf_dir }}
         run: terraform validate
 
-      - name: Install Checkov
-        run: pip install checkov
-
-      - name: Run Checkov
-        run: checkov -d terraform/bootstrap --framework terraform --soft-fail
-
       - name: Terraform Plan
-        working-directory: ./terraform/bootstrap
+        working-directory: ${{ matrix.target.tf_dir }}
         run: terraform plan -lock=false -out=tfplan
 
       - name: Show Terraform Plan
-        working-directory: ./terraform/bootstrap
+        working-directory: ${{ matrix.target.tf_dir }}
         run: terraform show -no-color tfplan
 
       - name: Add Terraform Plan to Summary
         if: always()
-        working-directory: ./terraform/bootstrap
+        working-directory: ${{ matrix.target.tf_dir }}
         run: |
-          echo "## Terraform Bootstrap Plan" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Terraform ${{ matrix.target.environment }} Plan" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
           if [ -f tfplan ]; then
-            echo "Review the proposed account-level bootstrap changes before merging." >> "$GITHUB_STEP_SUMMARY"
+            echo "Review the proposed ${{ matrix.target.environment }} infrastructure changes before merging." >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo '```terraform' >> "$GITHUB_STEP_SUMMARY"
             terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"

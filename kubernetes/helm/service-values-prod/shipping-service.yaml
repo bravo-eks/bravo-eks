@@ -1,0 +1,98 @@
+replicaCount: 2
+
+image:
+  repository: "083268669572.dkr.ecr.eu-west-2.amazonaws.com/shipping-service"
+  tag: "a846638d07be0e000e0cc513e4b730500a1e65ed"
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 8085
+    protocol: TCP
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8085
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+env:
+  - name: SQS_QUEUE_URL
+    value: "https://sqs.eu-west-2.amazonaws.com/083268669572/bravo-events"
+  - name: AWS_REGION
+    value: "eu-west-2"
+
+envFrom:
+  - secretRef:
+      name: shipping-service-database
+
+configMap:
+  enabled: false
+
+serviceAccount:
+  create: true
+  name: shipping-service
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::083268669572:role/bravo-eks-production-shipping-service"
+
+migration:
+  enabled: true
+
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: shipping-service-database
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: bravo/prod/shipping-service/database
+        property: DATABASE_URL
+
+autoscaling:
+  enabled: false
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+ingress:
+  enabled: false
+
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - service: api-gateway
+    - service: worker
+  egressTo: []
+  allowPostgres: true
+  allowRedis: false
+  allowExternalHTTPS: true

@@ -1,0 +1,48 @@
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: bravo-eks-prod-velero-backups
+      config:
+        region: eu-west-2
+
+  volumeSnapshotLocation:
+    - name: default
+      provider: aws
+      config:
+        region: eu-west-2
+
+credentials:
+  useSecret: false
+
+serviceAccount:
+  server:
+    create: true
+    name: velero
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::083268669572:role/bravo-eks-production-velero
+
+features: EnableCSI
+
+deployNodeAgent: false
+
+schedules:
+  redis-daily:
+    schedule: "0 2 * * *"
+    template:
+      includedNamespaces:
+        - redis
+      ttl: 168h
+  bravo-app-daily:
+    schedule: "30 2 * * *"
+    template:
+      includedNamespaces:
+        - microservices
+      ttl: 168h
+
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.13.2
+    volumeMounts:
+      - mountPath: /target
+        name: plugins

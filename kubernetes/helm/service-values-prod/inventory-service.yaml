@@ -1,0 +1,88 @@
+replicaCount: 2
+
+image:
+  repository: "083268669572.dkr.ecr.eu-west-2.amazonaws.com/inventory-service"
+  tag: "a846638d07be0e000e0cc513e4b730500a1e65ed"
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 8082
+    protocol: TCP
+
+service:
+  type: ClusterIP
+  portName: http
+  port: 80
+  targetPort: 8082
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+env: []
+
+envFrom:
+  - secretRef:
+      name: inventory-service-database
+
+configMap:
+  enabled: false
+
+migration:
+  enabled: true
+
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: inventory-service-database
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: bravo/prod/inventory-service/database
+        property: DATABASE_URL
+
+autoscaling:
+  enabled: false
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+ingress:
+  enabled: false
+
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - service: api-gateway
+    - service: worker
+  egressTo: []
+  allowPostgres: true
+  allowRedis: false
+  allowExternalHTTPS: false

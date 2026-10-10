@@ -1,0 +1,145 @@
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    nodeAffinityPolicy: Honor
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: bravo-app
+        app.kubernetes.io/instance: worker
+
+replicaCount: 1
+
+image:
+  repository: "083268669572.dkr.ecr.eu-west-2.amazonaws.com/worker"
+  tag: "a846638d07be0e000e0cc513e4b730500a1e65ed"
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: health
+    containerPort: 8090
+    protocol: TCP
+
+service:
+  type: ClusterIP
+  portName: health
+  port: 8090
+  targetPort: 8090
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: health
+  periodSeconds: 5
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: health
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: health
+
+env:
+  - name: SQS_QUEUE_URL
+    value: "https://sqs.eu-west-2.amazonaws.com/083268669572/bravo-events"
+  - name: AWS_REGION
+    value: "eu-west-2"
+  - name: ORDER_SERVICE_URL
+    value: "http://order-service-bravo-app:80"
+  - name: INVENTORY_SERVICE_URL
+    value: "http://inventory-service-bravo-app:80"
+  - name: PAYMENT_SERVICE_URL
+    value: "http://payment-service-bravo-app:80"
+  - name: NOTIFICATION_SERVICE_URL
+    value: "http://notification-service-bravo-app:80"
+  - name: SHIPPING_SERVICE_URL
+    value: "http://shipping-service-bravo-app:80"
+
+envFrom: []
+
+configMap:
+  enabled: false
+
+serviceAccount:
+  create: true
+  name: worker
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::083268669572:role/bravo-eks-production-worker"
+
+externalSecret:
+  enabled: false
+
+autoscaling:
+  enabled: false
+
+pdb:
+  enabled: false
+
+ingress:
+  enabled: false
+
+networkPolicy:
+  enabled: true
+  ingressFrom: []
+  egressTo:
+    - service: order-service
+      port: 8081
+    - service: inventory-service
+      port: 8082
+    - service: payment-service
+      port: 8083
+    - service: notification-service
+      port: 8084
+    - service: shipping-service
+      port: 8085
+  allowPostgres: false
+  allowRedis: false
+  allowExternalHTTPS: true
+
+keda:
+  enabled: true
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  pollingInterval: 30
+  cooldownPeriod: 300
+
+  authentication:
+    provider: aws
+
+  sqs:
+    queueURL: "https://sqs.eu-west-2.amazonaws.com/083268669572/bravo-events"
+    awsRegion: "eu-west-2"
+    queueLength: "5"
+
+  schedule:
+    timezone: Europe/London
+    daytime:
+      enabled: true
+      start: "0 6 * * *"
+      end: "0 0 * * *"
+      desiredReplicas: "2"
+    boxingDay:
+      enabled: true
+      start: "0 0 26 12 *"
+      end: "0 0 27 12 *"
+      desiredReplicas: "5"
+
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60

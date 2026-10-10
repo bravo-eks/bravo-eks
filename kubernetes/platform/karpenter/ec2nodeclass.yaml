@@ -24,5 +24,4 @@ spec:
 
   tags:
     Project: bravo-eks
-    Environment: dev
     ManagedBy: Karpenter

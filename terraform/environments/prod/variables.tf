@@ -25,13 +25,13 @@ variable "environment" {
 variable "database_name" {
   description = "Initial PostgreSQL database name"
   type        = string
-  default     = "bravo-database"
+  default     = "bravodatabase"
 }
 
 variable "master_username" {
   description = "PostgreSQL master username"
   type        = string
-  default     = "bravo-dbadmin"
+  default     = "bravodbadmin"
 }
 
 variable "rds_instance_class" {
@@ -156,4 +156,10 @@ variable "alert_email" {
   type        = string
   default     = null
   nullable    = true
+}
+
+variable "cluster_admin_principal_arns" {
+  description = "IAM principals granted Kubernetes administrator access to the Production EKS cluster."
+  type        = set(string)
+  default     = ["arn:aws:iam::083268669572:role/aws-reserved/sso.amazonaws.com/eu-west-2/AWSReservedSSO_AdministratorAccess_e62c70aeb5c436b0"]
 }

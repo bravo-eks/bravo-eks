@@ -10,8 +10,8 @@ on:
         options:
           - dev
           - prod
-          - bootstrap
-        default: dev
+          - bootstrap-dev
+          - bootstrap-prod
 
 permissions:
   contents: read
@@ -35,14 +35,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set Terraform directory
+      - name: Resolve and validate Terraform target
+        id: target
         shell: bash
+        env:
+          TARGET: ${{ inputs.environment }}
         run: |
-          if [ "${{ inputs.environment }}" = "bootstrap" ]; then
-            echo "TF_DIR=./terraform/bootstrap" >> "$GITHUB_ENV"
-          else
-            echo "TF_DIR=./terraform/environments/${{ inputs.environment }}" >> "$GITHUB_ENV"
-          fi
+          case "$TARGET" in
+            dev)
+              tf_dir="./terraform/environments/dev"
+              aws_role_arn="arn:aws:iam::304960797322:role/bravo-github-terraform-deploy"
+              expected_account="304960797322"
+              ;;
+            bootstrap-dev)
+              tf_dir="./terraform/bootstrap-dev"
+              aws_role_arn="arn:aws:iam::304960797322:role/bravo-github-terraform-deploy"
+              expected_account="304960797322"
+              ;;
+            prod)
+              tf_dir="./terraform/environments/prod"
+              aws_role_arn="arn:aws:iam::083268669572:role/bravo-prod-github-terraform-deploy"
+              expected_account="083268669572"
+              ;;
+            bootstrap-prod)
+              tf_dir="./terraform/bootstrap-prod"
+              aws_role_arn="arn:aws:iam::083268669572:role/bravo-prod-github-terraform-deploy"
+              expected_account="083268669572"
+              ;;
+            *) echo "Unsupported Terraform target: $TARGET" >&2; exit 1 ;;
+          esac
+          {
+            echo "tf_dir=$tf_dir"
+            echo "aws_role_arn=$aws_role_arn"
+            echo "expected_account=$expected_account"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Show OIDC subject
         shell: bash
@@ -64,30 +90,40 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
-          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-deploy
+          role-to-assume: ${{ steps.target.outputs.aws_role_arn }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS account
+        run: |
+          actual_account="$(aws sts get-caller-identity --query Account --output text)"
+          echo "Expected AWS account: ${{ steps.target.outputs.expected_account }}"
+          echo "Authenticated AWS account: $actual_account"
+          if [ "$actual_account" != "${{ steps.target.outputs.expected_account }}" ]; then
+            echo "AWS account mismatch; refusing to access Terraform state or resources." >&2
+            exit 1
+          fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        working-directory: ${{ env.TF_DIR }}
+        working-directory: ${{ steps.target.outputs.tf_dir }}
         run: terraform init
 
       - name: Terraform Validate
-        working-directory: ${{ env.TF_DIR }}
+        working-directory: ${{ steps.target.outputs.tf_dir }}
         run: terraform validate
 
       - name: Terraform Plan
-        working-directory: ${{ env.TF_DIR }}
+        working-directory: ${{ steps.target.outputs.tf_dir }}
         run: terraform plan -out=tfplan -lock-timeout=5m
 
       - name: Show Terraform Plan
-        working-directory: ${{ env.TF_DIR }}
+        working-directory: ${{ steps.target.outputs.tf_dir }}
         run: terraform show -no-color tfplan
 
       - name: Add Terraform Plan to Summary
-        working-directory: ${{ env.TF_DIR }}
+        working-directory: ${{ steps.target.outputs.tf_dir }}
         run: |
           echo "## Terraform ${{ inputs.environment }} Plan" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
@@ -98,7 +134,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: terraform-${{ inputs.environment }}-plan-${{ github.run_id }}
-          path: ${{ env.TF_DIR }}/tfplan
+          path: ${{ steps.target.outputs.tf_dir }}/tfplan
           retention-days: 1
 
   terraform-apply:
@@ -114,36 +150,72 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set Terraform directory
+      - name: Resolve and validate Terraform target
+        id: target
         shell: bash
+        env:
+          TARGET: ${{ inputs.environment }}
         run: |
-          if [ "${{ inputs.environment }}" = "bootstrap" ]; then
-            echo "TF_DIR=./terraform/bootstrap" >> "$GITHUB_ENV"
-          else
-            echo "TF_DIR=./terraform/environments/${{ inputs.environment }}" >> "$GITHUB_ENV"
-          fi
+          case "$TARGET" in
+            dev)
+              tf_dir="./terraform/environments/dev"
+              aws_role_arn="arn:aws:iam::304960797322:role/bravo-github-terraform-deploy"
+              expected_account="304960797322"
+              ;;
+            bootstrap-dev)
+              tf_dir="./terraform/bootstrap-dev"
+              aws_role_arn="arn:aws:iam::304960797322:role/bravo-github-terraform-deploy"
+              expected_account="304960797322"
+              ;;
+            prod)
+              tf_dir="./terraform/environments/prod"
+              aws_role_arn="arn:aws:iam::083268669572:role/bravo-prod-github-terraform-deploy"
+              expected_account="083268669572"
+              ;;
+            bootstrap-prod)
+              tf_dir="./terraform/bootstrap-prod"
+              aws_role_arn="arn:aws:iam::083268669572:role/bravo-prod-github-terraform-deploy"
+              expected_account="083268669572"
+              ;;
+            *) echo "Unsupported Terraform target: $TARGET" >&2; exit 1 ;;
+          esac
+          {
+            echo "tf_dir=$tf_dir"
+            echo "aws_role_arn=$aws_role_arn"
+            echo "expected_account=$expected_account"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
-          role-to-assume: arn:aws:iam::304960797322:role/bravo-github-terraform-deploy
+          role-to-assume: ${{ steps.target.outputs.aws_role_arn }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS account
+        run: |
+          actual_account="$(aws sts get-caller-identity --query Account --output text)"
+          echo "Expected AWS account: ${{ steps.target.outputs.expected_account }}"
+          echo "Authenticated AWS account: $actual_account"
+          if [ "$actual_account" != "${{ steps.target.outputs.expected_account }}" ]; then
+            echo "AWS account mismatch; refusing to access Terraform state or resources." >&2
+            exit 1
+          fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        working-directory: ${{ env.TF_DIR }}
+        working-directory: ${{ steps.target.outputs.tf_dir }}
         run: terraform init
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4
         with:
           name: terraform-${{ inputs.environment }}-plan-${{ github.run_id }}
-          path: ${{ env.TF_DIR }}
+          path: ${{ steps.target.outputs.tf_dir }}
 
       - name: Terraform Apply
-        working-directory: ${{ env.TF_DIR }}
+        working-directory: ${{ steps.target.outputs.tf_dir }}
         run: terraform apply -auto-approve -lock-timeout=5m tfplan
 
       - name: Add Apply Summary

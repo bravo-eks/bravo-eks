@@ -24,10 +24,11 @@ module "eks" {
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
 
-  system_node_instance_types = var.system_node_instance_types
-  system_node_desired_size   = var.system_node_desired_size
-  system_node_min_size       = var.system_node_min_size
-  system_node_max_size       = var.system_node_max_size
+  system_node_instance_types   = var.system_node_instance_types
+  system_node_desired_size     = var.system_node_desired_size
+  system_node_min_size         = var.system_node_min_size
+  system_node_max_size         = var.system_node_max_size
+  cluster_admin_principal_arns = var.cluster_admin_principal_arns
 
   tags = var.tags
 }
@@ -43,6 +44,8 @@ module "iam" {
 
   cluster_name = module.eks.cluster_name
 
+  enable_external_dns_route53 = true
+
   kubernetes_namespace           = var.kubernetes_namespace
   order_service_account_name     = var.order_service_account_name
   payment_service_account_name   = var.payment_service_account_name
@@ -56,7 +59,10 @@ module "iam" {
     module.sqs.queue_arn
   ]
 
-  external_secrets_secret_arns = [module.rds.master_user_secret_arn]
+  external_secrets_secret_arns = [
+    module.rds.master_user_secret_arn,
+    "arn:aws:secretsmanager:eu-west-2:083268669572:secret:bravo/prod/*"
+  ]
 
   velero_backup_bucket_arn = module.velero.bucket_arn
   tags                     = var.tags

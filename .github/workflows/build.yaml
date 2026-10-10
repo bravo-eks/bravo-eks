@@ -8,14 +8,15 @@ on:
       - "services/**"
       - ".github/workflows/build.yaml"
 
-  push:
-    branches:
-      - main
-    paths:
-      - "services/**"
-      - ".github/workflows/build.yaml"
-
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "AWS environment to publish images to"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
 
 permissions:
   contents: read
@@ -31,12 +32,44 @@ jobs:
 
     outputs:
       services: ${{ steps.set-services.outputs.services }}
+      targets: ${{ steps.set-publish-targets.outputs.targets }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Validate and map publishing target
+        id: set-publish-targets
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TARGET: ${{ inputs.environment }}
+        run: |
+          case "$EVENT_NAME" in
+            push)
+              targets='[{"github_environment":"Development","expected_account":"304960797322","expected_registry":"304960797322.dkr.ecr.eu-west-2.amazonaws.com","expected_role":"arn:aws:iam::304960797322:role/bravo-github-ecr"}]'
+              ;;
+            workflow_dispatch)
+              case "$TARGET" in
+                dev)
+                  targets='[{"github_environment":"Development","expected_account":"304960797322","expected_registry":"304960797322.dkr.ecr.eu-west-2.amazonaws.com","expected_role":"arn:aws:iam::304960797322:role/bravo-github-ecr"}]'
+                  ;;
+                prod)
+                  targets='[{"github_environment":"Production","expected_account":"083268669572","expected_registry":"083268669572.dkr.ecr.eu-west-2.amazonaws.com","expected_role":"arn:aws:iam::083268669572:role/bravo-prod-github-ecr"}]'
+                  ;;
+                *) echo "Unsupported image publishing environment: $TARGET" >&2; exit 1 ;;
+              esac
+              ;;
+            pull_request)
+              targets='[]'
+              ;;
+            *)
+              echo "Unsupported workflow event for image publishing: $EVENT_NAME" >&2
+              exit 1
+              ;;
+          esac
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
 
       - name: Detect changed services
         id: filter
@@ -46,48 +79,61 @@ jobs:
           filters: |
             api-gateway:
               - 'services/api-gateway/**'
-              - '.github/workflows/build.yaml'
 
             dashboard-api:
               - 'services/dashboard-api/**'
-              - '.github/workflows/build.yaml'
 
             inventory-service:
               - 'services/inventory-service/**'
-              - '.github/workflows/build.yaml'
 
             notification-service:
               - 'services/notification-service/**'
-              - '.github/workflows/build.yaml'
 
             order-service:
               - 'services/order-service/**'
-              - '.github/workflows/build.yaml'
 
             payment-service:
               - 'services/payment-service/**'
-              - '.github/workflows/build.yaml'
 
             scheduler:
               - 'services/scheduler/**'
-              - '.github/workflows/build.yaml'
 
             shipping-service:
               - 'services/shipping-service/**'
-              - '.github/workflows/build.yaml'
 
             worker:
               - 'services/worker/**'
-              - '.github/workflows/build.yaml'
 
       - name: Set service matrix
         id: set-services
         env:
           EVENT_NAME: ${{ github.event_name }}
+          COMMIT_SHA: ${{ github.sha }}
           CHANGED_SERVICES: ${{ steps.filter.outputs.changes }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo 'services=["api-gateway","dashboard-api","inventory-service","notification-service","order-service","payment-service","scheduler","shipping-service","worker"]' >> "$GITHUB_OUTPUT"
+            if ! git cat-file -e "${COMMIT_SHA}^{commit}" 2>/dev/null; then
+              echo "Selected commit is unavailable in the checkout: $COMMIT_SHA" >&2
+              exit 1
+            fi
+            if git rev-parse --verify "${COMMIT_SHA}^1" >/dev/null 2>&1; then
+              base_commit="${COMMIT_SHA}^1"
+            else
+              base_commit="$(git hash-object -t tree /dev/null)"
+            fi
+            if ! changed_paths="$(git diff --name-only "$base_commit" "$COMMIT_SHA")"; then
+              echo "Could not determine changed paths for selected commit $COMMIT_SHA." >&2
+              exit 1
+            fi
+            services_json='['
+            separator=''
+            for service in api-gateway dashboard-api inventory-service notification-service order-service payment-service scheduler shipping-service worker; do
+              if grep -q "^services/${service}/" <<< "$changed_paths"; then
+                services_json+="${separator}\"${service}\""
+                separator=','
+              fi
+            done
+            printf 'services=%s]\n' "$services_json" >> "$GITHUB_OUTPUT"
           else
             echo "services=$CHANGED_SERVICES" >> "$GITHUB_OUTPUT"
           fi
@@ -135,17 +181,18 @@ jobs:
       #     ignore-unfixed: true
       #     exit-code: "1"
 
-  # Main: build, scan and push changed services to ECR
-  build-scan-push-main:
-    name: Main Build, Scan and Push - ${{ matrix.service }}
+  # Manual: build, scan and push only changed services to ECR
+  build-scan-push-manual:
+    name: Manual Build, Scan and Push - ${{ matrix.service }}
     needs: detect-changes
 
     if: >
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      needs.detect-changes.outputs.services != '[]'
+      needs.detect-changes.outputs.services != '[]' &&
+      needs.detect-changes.outputs.targets != '[]'
 
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ matrix.target.github_environment }}
 
     permissions:
       id-token: write
@@ -155,10 +202,50 @@ jobs:
       fail-fast: false
       matrix:
         service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+        target: ${{ fromJSON(needs.detect-changes.outputs.targets) }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Validate selected AWS target
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TARGET: ${{ inputs.environment }}
+          GITHUB_ENVIRONMENT: ${{ matrix.target.github_environment }}
+          EXPECTED_AWS_ACCOUNT: ${{ matrix.target.expected_account }}
+          EXPECTED_ECR_REGISTRY: ${{ matrix.target.expected_registry }}
+          EXPECTED_AWS_ROLE: ${{ matrix.target.expected_role }}
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          case "$GITHUB_ENVIRONMENT" in
+            Development)
+              expected_mapping="304960797322|304960797322.dkr.ecr.eu-west-2.amazonaws.com|arn:aws:iam::304960797322:role/bravo-github-ecr"
+              if [ "$EVENT_NAME" != "push" ] && { [ "$EVENT_NAME" != "workflow_dispatch" ] || [ "$INPUT_TARGET" != "dev" ]; }; then
+                echo "Development publishing is not permitted for this event/selection." >&2
+                exit 1
+              fi
+              ;;
+            Production)
+              expected_mapping="083268669572|083268669572.dkr.ecr.eu-west-2.amazonaws.com|arn:aws:iam::083268669572:role/bravo-prod-github-ecr"
+              if [ "$EVENT_NAME" != "workflow_dispatch" ] || [ "$INPUT_TARGET" != "prod" ]; then
+                echo "Production publishing requires an explicit manual prod selection." >&2
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Unsupported GitHub Environment: $GITHUB_ENVIRONMENT" >&2
+              exit 1
+              ;;
+          esac
+          if [ "$EXPECTED_AWS_ACCOUNT|$EXPECTED_ECR_REGISTRY|$EXPECTED_AWS_ROLE" != "$expected_mapping" ]; then
+            echo "AWS account, ECR registry, and IAM role do not match the selected environment." >&2
+            exit 1
+          fi
+          if [ -z "$AWS_ROLE_ARN" ] || [ "$AWS_ROLE_ARN" != "$EXPECTED_AWS_ROLE" ]; then
+            echo "AWS_ROLE_ARN is unset or does not match the selected environment." >&2
+            exit 1
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -167,9 +254,33 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: github-actions-${{ github.run_number }}
 
+      - name: Verify AWS account
+        env:
+          EXPECTED_AWS_ACCOUNT: ${{ matrix.target.expected_account }}
+        run: |
+          actual_account="$(aws sts get-caller-identity --query Account --output text)"
+          echo "Expected AWS account: $EXPECTED_AWS_ACCOUNT"
+          echo "Authenticated AWS account: $actual_account"
+          if [ "$actual_account" != "$EXPECTED_AWS_ACCOUNT" ]; then
+            echo "AWS account mismatch; refusing to access ECR." >&2
+            exit 1
+          fi
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Verify ECR registry
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          EXPECTED_ECR_REGISTRY: ${{ matrix.target.expected_registry }}
+        run: |
+          echo "Expected ECR registry: $EXPECTED_ECR_REGISTRY"
+          echo "Authenticated ECR registry: $ECR_REGISTRY"
+          if [ "$ECR_REGISTRY" != "$EXPECTED_ECR_REGISTRY" ]; then
+            echo "ECR registry does not match the selected AWS environment." >&2
+            exit 1
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -196,13 +307,26 @@ jobs:
       #     exit-code: "1"
 
       - name: Push image to ECR
+        env:
+          EXPECTED_AWS_ACCOUNT: ${{ matrix.target.expected_account }}
+          EXPECTED_ECR_REGISTRY: ${{ matrix.target.expected_registry }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
+          actual_account="$(aws sts get-caller-identity --query Account --output text)"
+          if [ "$actual_account" != "$EXPECTED_AWS_ACCOUNT" ]; then
+            echo "AWS account mismatch before docker push; refusing to push." >&2
+            exit 1
+          fi
+          if [ "$ECR_REGISTRY" != "$EXPECTED_ECR_REGISTRY" ]; then
+            echo "ECR registry mismatch before docker push; refusing to push." >&2
+            exit 1
+          fi
           docker push \
-            ${{ steps.login-ecr.outputs.registry }}/${{ matrix.service }}:${{ github.sha }}
+            "$ECR_REGISTRY/${{ matrix.service }}:${{ github.sha }}"
 
       - name: Output image details
         run: |
           echo "Image pushed successfully"
           echo "Service: ${{ matrix.service }}"
           echo "Image tag: ${{ github.sha }}"
-          echo "Image URI: ${{ steps.login-ecr.outputs.registry }}/${{ matrix.service }}:${{ github.sha }}"
+          echo "Image URI: ${{ matrix.target.expected_registry }}/${{ matrix.service }}:${{ github.sha }}"

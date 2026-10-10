@@ -43,3 +43,7 @@ output "node_role_name" {
   description = "Name of the IAM role used by EKS worker nodes."
   value       = aws_iam_role.node.name
 }
+output "cluster_admin_principal_arns" {
+  description = "IAM principal ARNs configured with cluster administrator access."
+  value       = sort(keys(aws_eks_access_policy_association.cluster_admin))
+}

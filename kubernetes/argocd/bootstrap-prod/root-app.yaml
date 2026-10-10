@@ -1,0 +1,18 @@
+# Review the Production applications before syncing this manual-only root.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bravo-prod-root
+  namespace: argocd
+spec:
+  project: bravo-prod-bootstrap
+  source:
+    repoURL: https://github.com/bravo-eks/bravo-eks.git
+    targetRevision: main
+    path: kubernetes/argocd/applications-prod/app-groups
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
