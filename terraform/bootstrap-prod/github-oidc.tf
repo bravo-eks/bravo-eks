@@ -265,14 +265,13 @@ resource "aws_iam_role_policy" "github_terraform_deploy" {
         Sid    = "VeleroS3Read"
         Effect = "Allow"
         Action = [
-          "s3:GetBucketPolicy",
-          "s3:GetBucketLocation",
-          "s3:GetBucketPublicAccessBlock",
-          "s3:GetBucketVersioning",
-          "s3:GetEncryptionConfiguration",
-          "s3:ListBucket"
+          "s3:Get*",
+          "s3:List*"
         ]
-        Resource = "arn:aws:s3:::bravo-eks-prod-velero-backups"
+        Resource = [
+          "arn:aws:s3:::bravo-eks-prod-velero-backups",
+          "arn:aws:s3:::bravo-eks-prod-velero-backups/*"
+        ]
       },
       {
         Sid      = "VPCRead"
