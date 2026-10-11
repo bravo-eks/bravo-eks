@@ -172,14 +172,14 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-      # - name: Scan image with Trivy
-      #   uses: aquasecurity/trivy-action@0.33.1
-      #   with:
-      #     image-ref: ${{ matrix.service }}:${{ github.sha }}
-      #     format: table
-      #     severity: HIGH,CRITICAL
-      #     ignore-unfixed: true
-      #     exit-code: "1"
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ matrix.service }}:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
   # Manual: build, scan and push only changed services to ECR
   build-scan-push-manual:
@@ -297,14 +297,14 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-      # - name: Scan image with Trivy
-      #   uses: aquasecurity/trivy-action@v0.33.1
-      #   with:
-      #     image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ matrix.service }}:${{ github.sha }}
-      #     format: table
-      #     severity: HIGH,CRITICAL
-      #     ignore-unfixed: true
-      #     exit-code: "1"
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@v0.33.1
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ matrix.service }}:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
       - name: Push image to ECR
         env:
