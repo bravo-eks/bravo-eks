@@ -1,597 +1,185 @@
 # BRAVO EKS
 
-> Production Engineering Simulation — AWS, Kubernetes & Microservices
+BRAVO is a production-oriented e-commerce and order-management platform built as nine Go microservices on Amazon EKS. The repository covers the application, AWS infrastructure, Kubernetes platform, delivery pipelines, security, observability, and recovery controls used to operate the system in DEV and PROD.
 
-BRAVO is a production-oriented e-commerce platform built as a distributed microservices application and deployed on **Amazon EKS**.
+The project uses Terraform for AWS infrastructure, Helm for Kubernetes packaging, GitHub Actions for build and infrastructure workflows, and Argo CD for GitOps reconciliation.
 
-The project simulates the work of a production engineering team responsible for taking a containerised application from local development through to a highly available, observable and secure Kubernetes environment.
+![Bravo Orders customer portal and admin workspace](images/bravo-orders-home.png)
 
-The platform supports customer and admin workflows including product browsing, order creation, inventory management, payments, shipping, notifications and order tracking.
+[https://shop.bravoorders.com/](https://shop.bravoorders.com/)
 
-The project is developed by a **five-engineer production engineering team**, with work spanning application services, AWS infrastructure, Kubernetes, CI/CD, security, observability and reliability.
+## Project at a glance
 
----
+| Area | Implementation |
+|---|---|
+| Cloud and region | AWS, `eu-west-2` |
+| Runtime | Amazon EKS and nine Go microservices |
+| Infrastructure | Terraform modules with separate DEV and PROD roots and state |
+| Delivery | GitHub Actions, Amazon ECR, Helm, and Argo CD |
+| Ingress | Route 53, one internet-facing Classic Load Balancer, Traefik, and Gateway API |
+| Data | Private Amazon RDS for PostgreSQL and Redis |
+| Events | Amazon SQS, a dead-letter queue, and Worker consumers |
+| Scaling | Karpenter, HPA, and KEDA |
+| Observability | Prometheus, Grafana, kube-state-metrics, node exporter, Alertmanager, and CloudWatch |
+| Recovery | Velero with S3/EBS snapshots, plus separate RDS automated backups and PITR |
 
-## Project at a Glance
+## Architecture
 
-|                             |                                                 |
-| --------------------------- | ----------------------------------------------- |
-| **Cloud**                   | AWS                                             |
-| **Region**                  | `eu-west-2`                                     |
-| **Container orchestration** | Amazon EKS                                      |
-| **Infrastructure as Code**  | Terraform                                       |
-| **Application**             | Go microservices                                |
-| **Containers**              | Docker                                          |
-| **Kubernetes packaging**    | Helm                                            |
-| **Deployment**              | Argo CD / GitOps                                |
-| **Autoscaling**             | Karpenter                                       |
-| **Ingress**                 | Traefik                                         |
-| **TLS**                     | cert-manager                                    |
-| **DNS**                     | External DNS                                    |
-| **Secrets**                 | AWS Secrets Manager + External Secrets Operator |
-| **Database**                | PostgreSQL / Amazon RDS                         |
-| **Caching**                 | Redis                                           |
-| **Messaging**               | Amazon SQS                                      |
-| **Monitoring**              | Prometheus                                      |
-| **Dashboards**              | Grafana                                         |
-| **Alerting**                | Alertmanager / CloudWatch                       |
-| **Backups**                 | Velero                                          |
-| **CI/CD**                   | GitHub Actions                                  |
+![Final BRAVO EKS architecture](images/Bravo-Diagram.png)
 
----
+Production runs in a VPC across `eu-west-2a` and `eu-west-2b`. Each Availability Zone has a public subnet, a private application subnet, and a dedicated private database subnet. EKS workloads run in the private application subnets. The RDS subnet group spans both private database subnets; the current PostgreSQL instance is private and single-AZ.
 
-# Architecture
+The public request path is:
 
-The platform is composed of containerised microservices running on Amazon EKS, supported by AWS infrastructure and Kubernetes platform services.
+```text
+Users
+  ├─ DNS lookup → Route 53
+  └─ HTTPS → one internet-facing Classic Load Balancer
+                 → Traefik (TLS termination)
+                 → Kubernetes Gateway API / HTTPRoute
+                 → Dashboard API
+                 → API Gateway and domain services
+```
 
-The architecture diagram below provides the high-level view of how the application, infrastructure and platform components fit together.
+Route 53 resolves DNS records; it does not proxy application traffic. The deployed PROD load balancer is one **Classic Load Balancer** spanning both Availability Zones, not an ALB, NLB, or GWLB. The Internet Gateway supplies VPC network connectivity and is not an application-layer request hop.
 
-### Architecture Diagram
+## Application and data flow
 
-![Architecture Diagram](images/Bravo-Diagram.jpeg)
+| Service | Role |
+|---|---|
+| `dashboard-api` | Serves the customer/admin UI and proxies application requests |
+| `api-gateway` | Validates protected requests, applies Redis-backed rate limits, and routes to domain services |
+| `order-service` | Owns order creation and lifecycle state |
+| `inventory-service` | Manages products, stock, and reservations |
+| `payment-service` | Records simulated charges, refunds, and ledger entries |
+| `shipping-service` | Manages shipments and tracking events |
+| `notification-service` | Persists customer notifications and notification templates |
+| `worker` | Consumes SQS events and coordinates asynchronous domain work |
+| `scheduler` | Runs recurring database maintenance and reporting jobs |
 
-`docs/architecture/`
+Customer requests enter through the Dashboard API and API Gateway, then reach the relevant domain service. Order, payment, and shipping events are published to SQS. The Worker consumes those events and coordinates inventory, payment, shipping, notification, and order-status actions. Failed messages are retried and can move to the DLQ through the queue redrive policy. See the [detailed customer and order flow](docs/architecture/application-flow.md).
 
-For detailed application behaviour and service interactions, see:
+PostgreSQL runs on Amazon RDS in the dedicated private DB subnet layer. Stateful services use separate schemas, database users, and Secrets Manager entries; the Scheduler and Dashboard have explicit cross-schema read/write grants for their verified duties. Redis provides API Gateway rate-limit state. See the [RDS permission matrix](docs/architecture/rds-permission-matrix.md) and [database connectivity runbook](docs/runbooks/rds-database-connectivity.md).
 
-[`docs/architecture/application-flow.md`](docs/architecture/application-flow.md)
+## Infrastructure and environment separation
 
----
+Terraform provisions the VPC, public/private/application/database subnets, NAT and Internet gateways, EKS, ECR, RDS, SQS/DLQ, IAM roles, CloudWatch alarms, and Velero S3 storage. Reusable components are under [`terraform/modules/`](terraform/modules/).
 
-# Application
+| Concern | DEV | PROD |
+|---|---|---|
+| AWS boundary | Dedicated development account | Dedicated production account |
+| Terraform root | `terraform/environments/dev/` | `terraform/environments/prod/` |
+| Terraform state | DEV S3 backend and key | Separate PROD S3 backend and key |
+| Helm values | `kubernetes/helm/service-values-dev/` | `kubernetes/helm/service-values-prod/` |
+| Argo CD tree | `kubernetes/argocd/applications-dev/` | `kubernetes/argocd/applications-prod/` |
+| Reconciliation | Automated prune and self-heal | Manual synchronization in the checked-in PROD applications |
+| Image publishing | Explicit DEV target | Explicit manual PROD target |
 
-BRAVO is a distributed order-management platform made up of independent services.
+Bootstrap stacks are also separated under `terraform/bootstrap-dev/` and `terraform/bootstrap-prod/`. GitHub Actions validates the selected environment, IAM role, AWS account, ECR registry, and Terraform directory before operating.
 
-### Core services
+## CI/CD and GitOps
 
-| Service                | Purpose                                              |
-| ---------------------- | ---------------------------------------------------- |
-| `dashboard-api`        | Customer and admin web interface                     |
-| `api-gateway`          | API entry point, authentication and request handling |
-| `order-service`        | Order creation and order lifecycle                   |
-| `inventory-service`    | Product stock and inventory                          |
-| `payment-service`      | Payments, refunds and payment records                |
-| `shipping-service`     | Shipments and tracking                               |
-| `notification-service` | Customer notifications                               |
-| `worker`               | Background event processing                          |
-| `scheduler`            | Scheduled database and maintenance tasks             |
+GitHub Actions and Argo CD have separate responsibilities:
 
-The application uses a combination of synchronous HTTP communication and asynchronous messaging through Amazon SQS.
+- **GitHub Actions** detects changed services, builds and scans container images, publishes explicitly selected images to ECR, and runs Terraform format, security, validation, plan, and manually triggered deployment workflows.
+- **Argo CD** reads the environment-specific Helm configuration from Git and reconciles Kubernetes applications and platform components. EKS workloads then pull the referenced images from ECR.
 
----
+Production image publication and Terraform deployment require an explicit manual environment selection. Terraform deployment applies the saved plan from the same workflow run. See [GitHub Actions pipelines](docs/architecture/github-actions-pipelines.md) and the checked-in [workflow definitions](.github/workflows/).
 
-# Key Platform Components
+## Platform services
 
-The project uses AWS and Kubernetes technologies to provide the underlying platform.
+### Ingress and TLS
 
-### AWS
+ExternalDNS manages Route 53 records through IRSA. The current Classic Load Balancer exposes Traefik, which implements the Kubernetes Gateway API. `HTTPRoute` sends public application traffic to the Dashboard API. cert-manager obtains Let’s Encrypt certificates, and Traefik terminates HTTPS with the Kubernetes TLS secret.
 
-* Amazon EKS
-* Amazon VPC
-* Amazon RDS PostgreSQL
-* Amazon SQS / DLQs
-* Amazon ECR
-* AWS IAM
-* AWS KMS
-* AWS Secrets Manager
-* Amazon EBS
-* Amazon CloudWatch
-* Amazon SNS
+### Secrets management
 
-### Kubernetes
+Runtime and database credentials follow this path:
 
-* Kubernetes
-* Helm
-* Argo CD
-* Karpenter
-* Traefik
-* cert-manager
-* External DNS
-* External Secrets Operator
-* Velero
-* EBS CSI Driver
+```text
+AWS Secrets Manager → External Secrets Operator → Kubernetes Secret → workload
+```
 
-### Application & Delivery
+External Secrets Operator authenticates with IRSA and synchronizes only the configured secret properties. Source-controlled Helm values reference secret names and properties rather than embedding credentials.
 
-* Go
-* Docker
-* GitHub Actions
-* Terraform
-* GitHub
-* Amazon ECR
+### Autoscaling
 
----
+- **Karpenter** supplies EKS worker-node capacity for application workloads.
+- **HPA** provides resource-based pod scaling where enabled; PROD currently enables it for the API Gateway.
+- **KEDA** scales the Worker from SQS queue depth and configured schedules.
 
-# Local Development
+### Observability and alerting
 
-The application can be run locally using Docker Compose.
+Prometheus collects cluster metrics, including kube-state-metrics and node-exporter data, while Grafana provides dashboards. Alertmanager is deployed with the Kubernetes monitoring stack. CloudWatch alarms cover RDS CPU/storage and SQS queue/DLQ depth. The [SQS monitoring runbook](docs/runbooks/sqs-monitoring.md) records the existing SNS alerting path; this repository does not define an SNS subscription, so no email or other delivery channel is claimed here.
 
-## Prerequisites
+### Backup and recovery
 
-Install:
+Velero schedules Kubernetes namespace backups to encrypted, versioned S3 buckets and supports EBS CSI snapshots. RDS uses its own automated backup retention and point-in-time recovery capability. Velero does **not** back up RDS.
 
-* Docker
-* Docker Compose
-* Git
+## Security controls
 
-Clone the repository:
+- Private EKS application subnets and dedicated private DB subnets with no Internet route.
+- RDS is not publicly accessible and accepts PostgreSQL traffic through its security-group path from EKS.
+- GitHub OIDC provides short-lived AWS access for workflows; IRSA provides pod-level roles for services and controllers.
+- AWS Secrets Manager and External Secrets Operator keep application/database credentials out of manifests.
+- EKS secret encryption and RDS storage encryption use AWS KMS; SQS and Velero S3 storage are encrypted.
+- Kubernetes `NetworkPolicy` resources restrict service ingress and egress; workload values also apply non-root/container hardening and disruption controls where configured.
+- cert-manager and Let’s Encrypt provide HTTPS, terminated at Traefik.
+
+## Local development
+
+Prerequisites: Docker, Docker Compose, and Git.
 
 ```bash
 git clone https://github.com/bravo-eks/bravo-eks.git
 cd bravo-eks
-```
-
-### Configure the environment
-
-Create a local environment file from the example:
-
-```bash
 cp .env.example .env
-```
-
-Review the values in `.env` before starting the application.
-
-> Do not commit `.env` or any credentials to Git.
-
-### Start the application
-
-```bash
 docker compose up --build
 ```
 
-This builds and starts the application services and their local dependencies defined in the Docker Compose configuration.
-
-### Stop the application
-
-```bash
-docker compose down
-```
-
-### Remove local volumes
-
-If you need to reset local persistent data:
-
-```bash
-docker compose down -v
-```
-
-Then start the application again:
-
-```bash
-docker compose up --build
-```
-
-### Check running containers
+Review `.env` before starting and never commit credentials. Useful commands:
 
 ```bash
 docker compose ps
-```
-
-### View logs
-
-View all logs:
-
-```bash
-docker compose logs
-```
-
-View a specific service:
-
-```bash
-docker compose logs <service-name>
-```
-
-Follow logs:
-
-```bash
 docker compose logs -f <service-name>
+docker compose down
+docker compose down -v  # also remove local volumes
 ```
 
----
-
-# Kubernetes & Deployment
-
-The application is deployed to Amazon EKS.
-
-Terraform provisions the AWS infrastructure, while Kubernetes and Helm define the workloads running inside the cluster.
-
-Argo CD provides the GitOps deployment model.
-
-```text
-GitHub
-   |
-   v
-GitHub Actions
-   |
-   v
-Amazon ECR
-   |
-   v
-Argo CD
-   |
-   v
-Amazon EKS
-```
-
-Application deployments are managed through the Kubernetes configuration in:
-
-```text
-kubernetes/
-```
-
-Infrastructure is managed through:
-
-```text
-terraform/
-```
-
----
-
-# Environments
-
-The project contains separate Terraform environments for development and production.
-
-```text
-terraform/
-├── bootstrap/
-├── environments/
-│   ├── dev/
-│   └── prod/
-└── modules/
-```
-
-### Development
-
-Used for development, testing and validating platform changes before production.
-
-### Production
-
-Used for the production-simulation environment and demonstrates how the platform would be operated in a more production-oriented setup.
-
----
-
-# CI/CD
-
-GitHub Actions automates application and infrastructure workflows.
-
-Application changes follow a workflow similar to:
-
-```text
-Pull Request
-     |
-     v
-Detect changed services
-     |
-     v
-Build Docker image
-     |
-     v
-Run checks
-     |
-     v
-Merge
-     |
-     v
-Build image with Git SHA
-     |
-     v
-Push to Amazon ECR
-     |
-     v
-Argo CD deploys to EKS
-```
-
-Terraform changes are also validated and planned through GitHub Actions before infrastructure changes are applied.
-
-Workflow definitions:
-
-```text
-.github/workflows/
-```
-
----
-
-# Security
-
-Security has been considered across the application, infrastructure and deployment pipeline.
-
-Key controls include:
-
-* AWS IAM for access control
-* GitHub Actions OIDC for AWS authentication
-* Kubernetes service accounts
-* IRSA / AWS identity integrations
-* Private AWS networking
-* KMS encryption
-* Encrypted persistent storage
-* AWS Secrets Manager
-* External Secrets Operator
-* TLS certificates through cert-manager
-* Kubernetes RBAC
-* Container image security checks
-* Terraform security scanning with Checkov
-* No credentials committed to the repository
-
-Secrets follow the general flow:
-
-```text
-AWS Secrets Manager
-        |
-        v
-External Secrets Operator
-        |
-        v
-Kubernetes Secret
-        |
-        v
-Application
-```
-
----
-
-# Monitoring & Observability
-
-The platform includes both Kubernetes and AWS monitoring.
-
-## Prometheus
-
-Prometheus collects metrics from the Kubernetes environment and application platform.
-
-<!-- Prometheus screenshot -->
-
-### Prometheus Dashboard
-
-**Screenshot:**
-
-<!-- Add Prometheus screenshot here -->
-
----
-
-## Grafana
-
-Grafana provides dashboards for visualising platform and application metrics.
-
-<!-- Grafana screenshot -->
-
-### Grafana Dashboard
-
-**Screenshot:**
-
-<!-- Add Grafana screenshot here -->
-
----
-
-## Alertmanager
-
-Alertmanager handles alerts generated by Prometheus and routes notifications based on the configured alerting rules.
-
-### Alerting
-
-**Screenshot:**
-
-<!-- Add Alertmanager screenshot here -->
-
----
-
-## AWS CloudWatch
-
-CloudWatch monitoring is also configured for important AWS resources, including infrastructure and application dependencies.
-
-Examples include:
-
-* RDS CPU utilisation
-* RDS free storage
-* RDS database connections
-* SQS queue depth
-* SQS dead-letter queue messages
-* Load balancer health
-* Other environment-specific infrastructure signals
-
----
-
-# Backups & Reliability
-
-The platform includes reliability and recovery components designed to simulate production operational practices.
-
-### Velero
-
-Velero is used for Kubernetes backup and recovery.
-
-### Persistent Storage
-
-Persistent workloads use AWS-backed storage, including:
-
-* Amazon RDS for PostgreSQL
-* Amazon EBS
-* EBS CSI Driver
-* Persistent Volume Claims
-
-### Autoscaling
-
-Karpenter provides dynamic Kubernetes node provisioning based on workload requirements.
-
----
-
-# Repository Structure
+## Repository structure
 
 ```text
 .
-├── .github/
-│   └── workflows/              # CI/CD workflows
-│
-├── docs/                       # Project documentation
-│   ├── architecture/
-│   ├── runbooks/
-│   └── tests/
-│
-├── kubernetes/                 # Kubernetes & GitOps configuration
-│   ├── argocd/
-│   ├── helm/
-│   └── platform/
-│
-├── services/                   # Application microservices
-│   ├── api-gateway/
-│   ├── dashboard-api/
-│   ├── inventory-service/
-│   ├── notification-service/
-│   ├── order-service/
-│   ├── payment-service/
-│   ├── scheduler/
-│   ├── shipping-service/
-│   └── worker/
-│
-├── terraform/                  # AWS infrastructure
-│   ├── bootstrap/
-│   ├── environments/
-│   └── modules/
-│
-├── docker-compose.yml          # Local development
-└── .env.example                # Example local configuration
+├── .github/workflows/           # Container and Terraform workflows
+├── docs/                        # Architecture, runbooks, and verification notes
+├── images/                      # Final architecture diagram
+├── kubernetes/
+│   ├── argocd/                  # DEV/PROD GitOps application trees
+│   ├── helm/                    # Shared charts and environment values
+│   └── platform/                # Traefik, cert-manager, monitoring, scaling, backups
+├── services/                    # Nine Go microservices
+├── terraform/
+│   ├── bootstrap-dev/           # DEV state and GitHub OIDC bootstrap
+│   ├── bootstrap-prod/          # PROD state and GitHub OIDC bootstrap
+│   ├── environments/{dev,prod}/ # Environment roots and state configuration
+│   └── modules/                 # Reusable AWS modules
+├── docker-compose.yml
+└── .env.example
 ```
 
----
+## Documentation
 
-# Useful Documentation
+| Document | Purpose |
+|---|---|
+| [Application flow](docs/architecture/application-flow.md) | Customer/admin journeys, service interactions, events, and current limitations |
+| [GitHub Actions pipelines](docs/architecture/github-actions-pipelines.md) | Environment targeting, image publication, and Terraform workflows |
+| [RDS permission matrix](docs/architecture/rds-permission-matrix.md) | Service schemas, users, and database permissions |
+| [RDS connectivity runbook](docs/runbooks/rds-database-connectivity.md) | Diagnosing secrets, connectivity, authentication, and grants |
+| [SQS monitoring runbook](docs/runbooks/sqs-monitoring.md) | Queue/DLQ alarms and verified alerting path |
+| [DEV infrastructure health check](docs/tests/dev-infrastructure-health-check.md) | Recorded infrastructure and cluster verification |
 
-| Documentation                                                                    | Description                                     |
-| -------------------------------------------------------------------------------- | ----------------------------------------------- |
-| [`docs/architecture/application-flow.md`](docs/architecture/application-flow.md) | Detailed application architecture and workflows |
-| [`docs/runbooks/`](docs/runbooks/)                                               | Operational procedures                          |
-| [`docs/tests/`](docs/tests/)                                                     | Infrastructure and testing documentation        |
-| [`kubernetes/`](kubernetes/)                                                     | Kubernetes and GitOps configuration             |
-| [`terraform/`](terraform/)                                                       | AWS infrastructure                              |
+Service-level READMEs are available under [`services/`](services/). Kubernetes, Argo CD, Helm, and Terraform directories remain the source of truth for implementation details not covered by a dedicated guide.
 
-Individual services also contain service-specific documentation where applicable.
+## License
 
----
-
-# Getting Access to EKS
-
-Engineers with the appropriate AWS permissions can configure `kubectl` for an environment using:
-
-```bash
-aws eks update-kubeconfig \
-  --name <cluster-name> \
-  --region eu-west-2
-```
-
-Verify access:
-
-```bash
-kubectl get nodes
-```
-
-View workloads:
-
-```bash
-kubectl get pods -A
-```
-
-View Argo CD applications:
-
-```bash
-kubectl get applications -n argocd
-```
-
-Cluster names and AWS permissions are environment-specific and should not be hard-coded into this README.
-
----
-
-# Live Application
-
-The BRAVO application is available here:
-
-**[Live BRAVO Application](https://bravoorders.com)**
-
-<!-- Replace the URL above with the final production/demo URL if different. -->
-
----
-
-# Project Team
-
-BRAVO is developed as a **five-engineer production engineering team**.
-
-The team works across:
-
-* AWS infrastructure
-* Terraform
-* Kubernetes
-* Application development
-* CI/CD
-* Security
-* Observability
-* Reliability
-* Disaster recovery
-* Production operations
-
-The project is designed to reflect the collaboration, ownership and engineering practices expected when operating a real production platform.
-
----
-
-# Project Goal
-
-The goal of BRAVO is to demonstrate how a distributed application can be designed, deployed and operated using modern cloud and platform engineering practices.
-
-The project brings together:
-
-* Infrastructure as Code
-* AWS cloud infrastructure
-* Kubernetes
-* Microservices
-* GitOps
-* CI/CD
-* Secure identity and secrets management
-* Event-driven processing
-* Autoscaling
-* Monitoring and observability
-* Backup and recovery
-* Production-focused operational practices
-
-The result is a complete platform that can be developed locally, deployed through automated pipelines and operated on Amazon EKS.
-
----
-
-## Technology Stack
-
-```text
-Cloud              AWS
-Infrastructure     Terraform
-Containers         Docker
-Orchestration     Kubernetes / EKS
-Packaging         Helm
-GitOps            Argo CD
-Autoscaling       Karpenter
-Ingress           Traefik
-TLS               cert-manager
-DNS               External DNS
-Secrets           AWS Secrets Manager / External Secrets
-Database          PostgreSQL / RDS
-Cache             Redis
-Messaging         Amazon SQS
-Monitoring        Prometheus
-Dashboards        Grafana
-Alerting          Alertmanager / CloudWatch
-Backups           Velero
-CI/CD             GitHub Actions
-Application       Go
-```
+See [LICENSE](LICENSE).
