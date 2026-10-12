@@ -1,4 +1,4 @@
-# Security incidents: IAM, RBAC and secrets
+# 07 — Security incidents: IAM, RBAC and secrets
 
 > **Safety:** Select the correct AWS account, cluster, namespace and environment before acting. Production changes require incident/change approval. Commands are diagnostic unless explicitly marked otherwise. Do not paste secret values into tickets or logs.
 
