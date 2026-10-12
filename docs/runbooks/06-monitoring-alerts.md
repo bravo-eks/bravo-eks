@@ -1,4 +1,4 @@
-# Monitoring, observability and alert response
+# 06 — Monitoring, observability and alert response
 
 > **Safety:** Select the correct AWS account, cluster, namespace and environment before acting. Production changes require incident/change approval. Commands are diagnostic unless explicitly marked otherwise. Do not paste secret values into tickets or logs.
 
@@ -60,4 +60,4 @@ Verify the symptom clears **and** the user journey recovers; annotate Grafana/in
 
 ## Related
 
-[Runbook index and incident priority](README.md), [SQS monitoring](sqs-monitoring.md).
+[Runbook index and incident priority](README.md), [SQS monitoring](13-sqs-monitoring.md).
