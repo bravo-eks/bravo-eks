@@ -17,7 +17,7 @@ Workflow: [build.yaml](../../.github/workflows/build.yaml)
 
 ### Pull requests
 
-For changed services, the workflow builds images locally and never authenticates to AWS or pushes to ECR. Changes outside supported service directories do not select services. The Trivy scan step is currently commented out, so no image scan runs at this time.
+For changed services, the workflow builds images locally without authenticating to AWS or pushing to ECR. Changes outside supported service directories do not select services.
 
 ```mermaid
 flowchart LR

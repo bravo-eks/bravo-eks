@@ -1,6 +1,6 @@
 # Bravo Orders application flow
 
-This guide describes the current implementation of the Customer and Admin order flows, their service interactions, and the relevant persistence and event behavior. It is based on the service and frontend code, including the current demo-specific behavior and limitations.
+This guide describes the Customer and Admin order flows, their service interactions, and the relevant persistence and event behavior, based on the service and frontend implementation.
 
 ## 1. Architecture overview
 
@@ -177,7 +177,7 @@ The view shows the order's current status from Order Service and the lifecycle t
 
 Admin `loadLive()` calls `GET /api/orders?all=true`, plus the existing inventory, shipment, and payment-ledger endpoints. Order Service skips only the `X-User-Email` predicate when the query parameter is exactly `all=true`; without it, normal identity filtering remains. The endpoint still sorts newest-first and applies `LIMIT 100`, so the current implementation returns at most the latest 100 orders, not an unbounded history.
 
-This is demo functionality, not production RBAC: any caller whose request reaches Order Service with `all=true` bypasses the customer filter. The Gateway does not enforce an Admin role for this query.
+The Admin order-list route uses the `all=true` query parameter to return orders across customers. This route is not protected by an Admin-role check in the Gateway; the Customer list continues to use the identity filter.
 
 Admin order state is held in frontend `state.orders`. The Orders table and drawer read this array; the drawer finds the order by ID and matches its shipment from `state.shipments` by `order_id`. The Admin Orders sidebar badge and the Orders “All” tab count are both set from `state.orders.length` by `renderOrderCounts()`. Since `loadLive()` calls `renderAll()` after refreshing `state.orders`, both counts update after the live request. They represent the current response length, subject to the 100-order API cap.
 
@@ -458,28 +458,28 @@ Customer creates and pays for an order; it reaches processing; Customer requests
 
 Admin all-orders visibility and the dynamic Orders count were also reported as verified. The count reflects the loaded Admin list response length, currently capped at 100 by Order Service.
 
-## 16. Current demo limitations and production considerations
+## 16. Runtime behavior and boundaries
 
-- **Demo identity/authentication:** Dashboard UI keeps separate Customer/Admin flags in browser session storage and performs client-side checks for the demo login identities. API Gateway login accepts any non-empty email/password and issues a JWT with role `customer`; the Gateway validates JWTs but does not authorize Admin roles. Browser-side view/session state is not a security boundary.
-- **Admin all-orders access:** `?all=true` bypasses Order Service's `X-User-Email` filter without an Admin role check. The Gateway forwards role claims but does not enforce them. Production must enforce Admin authorization server-side and retain customer ownership checks for Customer endpoints.
-- **Tenant scoping:** Payment listing and refund-request listing return their service records; Customer UI filters the data locally. Production should enforce customer ownership at the backend before returning payment/refund data or accepting a refund action.
-- **Public webhook:** Gateway treats `/api/shipping/webhook` as public; the Shipping Service validates fields and status but no carrier authentication/signature verification is shown.
-- **Order limit:** The all-orders query returns at most 100 newest orders and has no pagination in the inspected implementation. The sidebar count is the response length, not a database-wide count if more than 100 orders exist.
-- **Price authority:** Customer checkout submits the catalogue price and Order Service calculates total from submitted prices. The inspected create path does not validate those prices against Inventory Service. Production should calculate/verify prices from a trusted server-side catalogue.
-- **Simulated providers:** Payment Service simulates charges/refunds in PostgreSQL and ledger rows; Notification Service simulates delivery and persists a `sent` record. No external payment processor or email/SMS provider call is present in these flows.
-- **SQS semantics and commit/publish gap:** Worker processing is at-least-once. Database commits and subsequent SQS publishes are not one atomic operation in the service handlers; a publish failure can leave committed state without the corresponding event. A transactional outbox or equivalent delivery guarantee would be needed for stronger production reliability.
-- **Scheduler behavior:** `retry_failed_payments` currently counts/logs eligible failures but the re-queue/charge work is a TODO. `daily_digest` logs a summary rather than sending it. `abandoned_carts` directly cancels old pending orders without publishing an order event or releasing inventory through Worker; that differs from the Order Service cancellation flow.
+- **Identity and authentication:** The Dashboard UI keeps Customer/Admin view flags in browser session storage. API Gateway login accepts a non-empty email and password and issues a JWT with role `customer`; the Gateway validates JWTs and forwards identity claims to services.
+- **Admin order view:** The Admin order list uses `?all=true`, which bypasses Order Service's `X-User-Email` filter. The Gateway forwards role claims; it does not apply Admin-role authorization.
+- **Payment and refund views:** Payment and refund-request list endpoints return their service records. The Customer UI filters those results locally.
+- **Shipping webhook:** The Gateway exposes `/api/shipping/webhook` as a public path. Shipping Service validates the request fields and status.
+- **Order list:** The all-orders query returns up to 100 newest orders. The sidebar count reflects the loaded response.
+- **Pricing:** Customer checkout submits the catalogue price, and Order Service calculates totals from the submitted item prices.
+- **Provider behavior:** Payment Service records charge and refund workflows in PostgreSQL and ledger rows. Notification Service persists delivery records; these flows do not call an external payment processor or email/SMS provider.
+- **SQS delivery:** Worker processing uses at-least-once delivery. Database commits and SQS publishes are separate operations in the service handlers.
+- **Scheduler behavior:** `retry_failed_payments` counts and logs eligible failures; `daily_digest` logs a summary. `abandoned_carts` cancels old pending orders directly, without publishing an order event or releasing inventory through Worker.
 
 ## Implementation source map
 
-- Customer/Admin requests, refund UI, checkout, and order actions: [`services/dashboard-api/static/app.js`](../services/dashboard-api/static/app.js)
-- UI structure and Admin navigation/count elements: [`services/dashboard-api/static/index.html`](../services/dashboard-api/static/index.html)
-- Dashboard static serving and API proxy: [`services/dashboard-api/main.go`](../services/dashboard-api/main.go)
-- Gateway routes, JWT handling, rate limiting, and identity forwarding: [`services/api-gateway/main.go`](../services/api-gateway/main.go)
-- Order creation, list scoping, lifecycle transitions, and events: [`services/order-service/main.go`](../services/order-service/main.go)
-- Inventory products and reservations: [`services/inventory-service/main.go`](../services/inventory-service/main.go)
-- Charges, payments, refund requests, ledger, and payment events: [`services/payment-service/main.go`](../services/payment-service/main.go)
-- Shipment creation, tracking, webhook status, and events: [`services/shipping-service/main.go`](../services/shipping-service/main.go)
-- SQS event processing and service orchestration: [`services/worker/main.go`](../services/worker/main.go)
-- Notification persistence and simulated delivery: [`services/notification-service/main.go`](../services/notification-service/main.go)
-- Recurring SQL jobs: [`services/scheduler/main.go`](../services/scheduler/main.go)
+- Customer/Admin requests, refund UI, checkout, and order actions: [`services/dashboard-api/static/app.js`](../../services/dashboard-api/static/app.js)
+- UI structure and Admin navigation/count elements: [`services/dashboard-api/static/index.html`](../../services/dashboard-api/static/index.html)
+- Dashboard static serving and API proxy: [`services/dashboard-api/main.go`](../../services/dashboard-api/main.go)
+- Gateway routes, JWT handling, rate limiting, and identity forwarding: [`services/api-gateway/main.go`](../../services/api-gateway/main.go)
+- Order creation, list scoping, lifecycle transitions, and events: [`services/order-service/main.go`](../../services/order-service/main.go)
+- Inventory products and reservations: [`services/inventory-service/main.go`](../../services/inventory-service/main.go)
+- Charges, payments, refund requests, ledger, and payment events: [`services/payment-service/main.go`](../../services/payment-service/main.go)
+- Shipment creation, tracking, webhook status, and events: [`services/shipping-service/main.go`](../../services/shipping-service/main.go)
+- SQS event processing and service orchestration: [`services/worker/main.go`](../../services/worker/main.go)
+- Notification persistence and simulated delivery: [`services/notification-service/main.go`](../../services/notification-service/main.go)
+- Recurring SQL jobs: [`services/scheduler/main.go`](../../services/scheduler/main.go)
