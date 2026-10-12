@@ -60,4 +60,4 @@ Verify the symptom clears **and** the user journey recovers; annotate Grafana/in
 
 ## Related
 
-[Incident response](incident-response.md), [SQS monitoring](sqs-monitoring.md).
+[Runbook index and incident priority](README.md), [SQS monitoring](sqs-monitoring.md).

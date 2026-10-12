@@ -51,4 +51,4 @@ Confirm Argo CD is **Synced/Healthy**, traffic succeeds through the customer pat
 
 ## Related
 
-[Argo CD troubleshooting](argocd-troubleshooting.md), [Pod troubleshooting](03-pod-troubleshooting.md).
+[Pod troubleshooting](03-pod-troubleshooting.md), [Monitoring and alerts](06-monitoring-alerts.md).

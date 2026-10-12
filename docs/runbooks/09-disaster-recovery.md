@@ -44,4 +44,4 @@ Check restored object counts, PVC binding, app readiness, RDS connection and rep
 
 ## Related
 
-[Backup and restore](backup-restore.md), [RDS connectivity](rds-database-connectivity.md), [SQS monitoring](sqs-monitoring.md).
+[RDS connectivity](rds-database-connectivity.md), [SQS monitoring](sqs-monitoring.md), [Runbook index and incident priority](README.md).
