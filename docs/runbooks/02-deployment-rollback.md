@@ -1,4 +1,4 @@
-# Deployment failure and rollback (GitOps)
+# 02 — Deployment failure and rollback (GitOps)
 
 > **Safety:** Select the correct AWS account, cluster, namespace and environment before acting. Production changes require incident/change approval. Commands are diagnostic unless explicitly marked otherwise. Do not paste secret values into tickets or logs.
 
