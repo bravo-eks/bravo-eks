@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "terraform_state" {
-  bucket        = "bravo-eks-prod-tfstate"
+  bucket        = var.terraform_state_bucket_name
   force_destroy = false
 
   lifecycle {
@@ -51,16 +51,5 @@ resource "aws_s3_bucket_ownership_controls" "terraform_state" {
 module "ecr" {
   source = "../modules/ecr"
 
-  ecr_repositories = [
-    "api-gateway",
-    "dashboard-api",
-    "inventory-service",
-    "notification-service",
-    "order-service",
-    "payment-service",
-    "scheduler",
-    "shipping-service",
-    "support-service",
-    "worker"
-  ]
+  ecr_repositories = var.ecr_repositories
 }

@@ -1,4 +1,4 @@
-# RDS database connectivity
+# 12 — RDS database connectivity
 
 ## 1. Purpose
 
@@ -269,3 +269,7 @@ Remove the temporary Dashboard API diagnostic pod after testing:
 ```bash
 kubectl delete pod postgres-diagnostic -n microservices --ignore-not-found
 ```
+
+## 10. Related runbooks
+
+[15 — AWS identity and External Secrets](15-aws-identity-secrets.md) · [14 — CI/CD and migrations](14-cicd-gitops-troubleshooting.md) · [18 — Incident history](18-incident-history-and-triage.md)
