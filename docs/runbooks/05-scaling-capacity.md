@@ -1,4 +1,4 @@
-# Scaling and capacity
+# 05 — Scaling and capacity
 
 > **Safety:** Select the correct AWS account, cluster, namespace and environment before acting. Production changes require incident/change approval. Commands are diagnostic unless explicitly marked otherwise. Do not paste secret values into tickets or logs.
 
@@ -58,4 +58,4 @@ Pending count falls, replicas/nodes stabilize, queue age declines, error rate st
 
 ## Related
 
-[SQS monitoring](sqs-monitoring.md), [Cost operations](10-cost-operations.md).
+[SQS monitoring](13-sqs-monitoring.md), [Cost operations](10-cost-operations.md).
