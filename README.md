@@ -41,7 +41,7 @@ Users
                  → API Gateway and domain services
 ```
 
-Route 53 resolves DNS records; it does not proxy application traffic. The deployed PROD load balancer is one **Classic Load Balancer** spanning both Availability Zones, not an ALB, NLB, or GWLB. The Internet Gateway supplies VPC network connectivity and is not an application-layer request hop.
+Route 53 resolves the public DNS names to the internet-facing endpoint. PROD uses one **Classic Load Balancer** spanning both Availability Zones. The Internet Gateway provides the VPC's internet connectivity.
 
 ## Application and data flow
 
@@ -51,13 +51,13 @@ Route 53 resolves DNS records; it does not proxy application traffic. The deploy
 | `api-gateway` | Validates protected requests, applies Redis-backed rate limits, and routes to domain services |
 | `order-service` | Owns order creation and lifecycle state |
 | `inventory-service` | Manages products, stock, and reservations |
-| `payment-service` | Records simulated charges, refunds, and ledger entries |
+| `payment-service` | Processes charge and refund workflows and maintains ledger entries |
 | `shipping-service` | Manages shipments and tracking events |
 | `notification-service` | Persists customer notifications and notification templates |
 | `worker` | Consumes SQS events and coordinates asynchronous domain work |
 | `scheduler` | Runs recurring database maintenance and reporting jobs |
 
-Customer requests enter through the Dashboard API and API Gateway, then reach the relevant domain service. Order, payment, and shipping events are published to SQS. The Worker consumes those events and coordinates inventory, payment, shipping, notification, and order-status actions. Failed messages are retried and can move to the DLQ through the queue redrive policy. See the [detailed customer and order flow](docs/architecture/application-flow.md).
+Customer requests enter through the Dashboard API and API Gateway, then reach the relevant domain service. Order, payment, and shipping events are published to SQS. The Worker consumes those events and coordinates inventory, payment, shipping, notification, and order-status actions. SQS retries unacknowledged messages and moves repeatedly failing messages to the DLQ through the queue redrive policy. See the [detailed customer and order flow](docs/architecture/application-flow.md).
 
 PostgreSQL runs on Amazon RDS in the dedicated private DB subnet layer. Stateful services use separate schemas, database users, and Secrets Manager entries; the Scheduler and Dashboard have explicit cross-schema read/write grants for their verified duties. Redis provides API Gateway rate-limit state. See the [RDS permission matrix](docs/architecture/rds-permission-matrix.md) and [database connectivity runbook](docs/runbooks/12-rds-database-connectivity.md).
 
@@ -105,16 +105,16 @@ External Secrets Operator authenticates with IRSA and synchronizes only the conf
 ### Autoscaling
 
 - **Karpenter** supplies EKS worker-node capacity for application workloads.
-- **HPA** provides resource-based pod scaling where enabled; PROD currently enables it for the API Gateway.
+- **HPA** provides resource-based pod scaling for configured application workloads.
 - **KEDA** scales the Worker from SQS queue depth and configured schedules.
 
 ### Observability and alerting
 
-Prometheus collects cluster metrics, including kube-state-metrics and node-exporter data, while Grafana provides dashboards. Alertmanager is deployed with the Kubernetes monitoring stack. CloudWatch alarms cover RDS CPU/storage and SQS queue/DLQ depth. The [SQS monitoring runbook](docs/runbooks/13-sqs-monitoring.md) records the existing SNS alerting path; this repository does not define an SNS subscription, so no email or other delivery channel is claimed here.
+Prometheus collects cluster metrics, including kube-state-metrics and node-exporter data, while Grafana provides dashboards. Alertmanager is deployed with the Kubernetes monitoring stack. CloudWatch alarms cover RDS CPU/storage and SQS queue/DLQ depth.  See the [SQS monitoring runbook](docs/runbooks/13-sqs-monitoring.md) for the operational alerting details.
 
 ### Backup and recovery
 
-Velero schedules Kubernetes namespace backups to encrypted, versioned S3 buckets and supports EBS CSI snapshots. RDS uses its own automated backup retention and point-in-time recovery capability. Velero does **not** back up RDS.
+Velero schedules Kubernetes namespace backups to encrypted, versioned S3 buckets and supports EBS CSI snapshots. Amazon RDS provides a separate automated backup and point-in-time recovery path for PostgreSQL.
 
 ## Security controls
 
@@ -169,13 +169,20 @@ docker compose down -v  # also remove local volumes
 
 ## Documentation
 
+The architecture documentation is the main entry point for the operational and platform design of Bravo EKS.
+
 | Document | Purpose |
 |---|---|
-| [Application flow](docs/architecture/application-flow.md) | Customer/admin journeys, service interactions, events, and current limitations |
+| [Application flow](docs/architecture/application-flow.md) | Customer/admin journeys, service interactions, event flow, and implementation behavior |
+| [AWS infrastructure and Terraform](docs/architecture/aws-infrastructure.md) | VPC, EKS, IAM, RDS, SQS, Terraform roots, state, and bootstrap architecture |
+| [Kubernetes and GitOps](docs/architecture/kubernetes-gitops.md) | Argo CD, application groups, Helm chart, platform apps, ingress, and rollout flow |
+| [Secrets management and security flow](docs/architecture/secrets-management.md) | AWS Secrets Manager, ESO, IRSA, and runtime credential injection |
+| [Data architecture and messaging](docs/architecture/data-and-messaging.md) | PostgreSQL ownership and permissions, SQS events, and Redis rate-limiting flow |
+| [Observability and scaling](docs/architecture/observability-scaling.md) | Prometheus, Grafana, KEDA, Karpenter, HPA, and CloudWatch coverage |
+| [Backup and recovery architecture](docs/architecture/backup-recovery.md) | Velero, EBS snapshots, and RDS backup/PITR design |
 | [GitHub Actions pipelines](docs/architecture/github-actions-pipelines.md) | Environment targeting, image publication, and Terraform workflows |
 | [RDS permission matrix](docs/architecture/rds-permission-matrix.md) | Service schemas, users, and database permissions |
-| [RDS connectivity runbook](docs/runbooks/12-rds-database-connectivity.md) | Diagnosing secrets, connectivity, authentication, and grants |
-| [SQS monitoring runbook](docs/runbooks/13-sqs-monitoring.md) | Queue/DLQ alarms and verified alerting path |
+| [Runbook index](docs/runbooks/README.md) | Operational procedures for access, rollback, scaling, monitoring, security, and recovery |
 | [DEV infrastructure health check](docs/tests/dev-infrastructure-health-check.md) | Recorded infrastructure and cluster verification |
 
 Service-level READMEs are available under [`services/`](services/). Kubernetes, Argo CD, Helm, and Terraform directories remain the source of truth for implementation details not covered by a dedicated guide.

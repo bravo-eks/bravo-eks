@@ -1,51 +1,104 @@
 # Backup and Recovery Architecture
 
-This document describes the separate Kubernetes and RDS backup and recovery mechanisms used by Bravo EKS.
+Bravo EKS uses complementary recovery mechanisms for Kubernetes workloads and transactional data:
 
-## Overview
+- **Velero** — Kubernetes resource and persistent-volume recovery
+- **Amazon RDS backups and PITR** — PostgreSQL database recovery
+- **Amazon S3** — durable storage for Velero backup artifacts
+- **EBS CSI snapshots** — persistent-volume snapshot recovery
 
-TODO
+This separates Kubernetes recovery from database recovery while providing dedicated protection for each layer.
 
-## Backup Strategy
+## Kubernetes Backup with Velero
 
-TODO
+Velero is deployed through the Kubernetes platform layer and configured with the AWS plugin.
 
-## Velero
+The platform configuration provides:
 
-TODO
+- AWS-backed backup storage
+- S3 backup persistence
+- EBS CSI snapshot support
+- IRSA-based AWS access
+- scheduled backups for application workloads
+
+Daily backup schedules protect the:
+
+- `microservices` namespace
+- `redis` namespace
+
+The Kubernetes recovery path is:
+
+```text
+Kubernetes Resources
+        │
+        ▼
+      Velero
+       │   │
+       │   └──► EBS CSI Snapshots
+       │
+       └──────► Amazon S3
+```
+
+This allows Kubernetes resources and supported persistent volumes to be restored through the same backup platform.
 
 ## S3 Backup Storage
 
-TODO
+Terraform provisions dedicated S3 storage for Velero backup artifacts.
+
+The backup bucket includes:
+
+- versioning
+- server-side encryption
+- public-access blocking
+- environment-specific IAM access
+
+Velero accesses the bucket through its Kubernetes service account and IRSA role, avoiding static AWS credentials inside the cluster.
+
+Backup storage remains separate from the Terraform state backend, keeping infrastructure state and workload backups isolated.
 
 ## EBS CSI Snapshots
 
-TODO
+Bravo EKS integrates Velero with Kubernetes CSI snapshot support.
 
-## Kubernetes Recovery
+The platform includes the snapshot controller and `VolumeSnapshotClass` configuration required for EBS-backed persistent volumes.
 
-TODO
+With Velero's CSI integration enabled, persistent-volume recovery follows:
 
-## RDS Automated Backups
+```text
+Kubernetes PVC
+      ↓
+EBS CSI
+      ↓
+Volume Snapshot
+      ↓
+Velero Recovery
+```
 
-TODO
+This complements Velero's Kubernetes resource backups with storage-level snapshots for workloads using persistent EBS volumes.
 
-## RDS Point-in-Time Recovery
+## RDS Backup and Point-in-Time Recovery
 
-TODO
+PostgreSQL recovery is handled independently through Amazon RDS.
 
-## Recovery Responsibilities
+The RDS configuration includes:
 
-TODO
+- automated backup retention
+- configured backup windows
+- encrypted storage
+- snapshot tagging
+- final snapshot protection
+- PostgreSQL log exports
 
-## Verification
+RDS automated backups support point-in-time recovery (PITR), providing a database-specific recovery path for the transactional state owned by the application services.
 
-TODO
+```text
+Application Data
+       ↓
+Amazon RDS PostgreSQL
+       ↓
+Automated Backups
+       ↓
+Point-in-Time Recovery
+```
 
-## Limitations
-
-TODO
-
-## Related Documentation
-
-TODO
+This keeps PostgreSQL recovery
