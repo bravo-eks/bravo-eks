@@ -40,7 +40,7 @@ If the cluster has been destroyed, AWS and Kubernetes checks will fail by design
 
 ## Existing detailed runbooks
 
-- [Incident response](incident-response.md), [Argo CD troubleshooting](argocd-troubleshooting.md), [RDS connectivity](rds-database-connectivity.md), [SQS monitoring](sqs-monitoring.md), [Backup and restore](backup-restore.md).
+- [RDS connectivity](rds-database-connectivity.md) and [SQS monitoring](sqs-monitoring.md). The former Argo CD, backup/restore, and incident-response placeholder files are consolidated into the operational runbooks above.
 
 ## Evidence and closure template
 
