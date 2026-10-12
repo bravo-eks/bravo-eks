@@ -59,7 +59,7 @@ Route 53 resolves DNS records; it does not proxy application traffic. The deploy
 
 Customer requests enter through the Dashboard API and API Gateway, then reach the relevant domain service. Order, payment, and shipping events are published to SQS. The Worker consumes those events and coordinates inventory, payment, shipping, notification, and order-status actions. Failed messages are retried and can move to the DLQ through the queue redrive policy. See the [detailed customer and order flow](docs/architecture/application-flow.md).
 
-PostgreSQL runs on Amazon RDS in the dedicated private DB subnet layer. Stateful services use separate schemas, database users, and Secrets Manager entries; the Scheduler and Dashboard have explicit cross-schema read/write grants for their verified duties. Redis provides API Gateway rate-limit state. See the [RDS permission matrix](docs/architecture/rds-permission-matrix.md) and [database connectivity runbook](docs/runbooks/rds-database-connectivity.md).
+PostgreSQL runs on Amazon RDS in the dedicated private DB subnet layer. Stateful services use separate schemas, database users, and Secrets Manager entries; the Scheduler and Dashboard have explicit cross-schema read/write grants for their verified duties. Redis provides API Gateway rate-limit state. See the [RDS permission matrix](docs/architecture/rds-permission-matrix.md) and [database connectivity runbook](docs/runbooks/12-rds-database-connectivity.md).
 
 ## Infrastructure and environment separation
 
@@ -110,7 +110,7 @@ External Secrets Operator authenticates with IRSA and synchronizes only the conf
 
 ### Observability and alerting
 
-Prometheus collects cluster metrics, including kube-state-metrics and node-exporter data, while Grafana provides dashboards. Alertmanager is deployed with the Kubernetes monitoring stack. CloudWatch alarms cover RDS CPU/storage and SQS queue/DLQ depth. The [SQS monitoring runbook](docs/runbooks/sqs-monitoring.md) records the existing SNS alerting path; this repository does not define an SNS subscription, so no email or other delivery channel is claimed here.
+Prometheus collects cluster metrics, including kube-state-metrics and node-exporter data, while Grafana provides dashboards. Alertmanager is deployed with the Kubernetes monitoring stack. CloudWatch alarms cover RDS CPU/storage and SQS queue/DLQ depth. The [SQS monitoring runbook](docs/runbooks/13-sqs-monitoring.md) records the existing SNS alerting path; this repository does not define an SNS subscription, so no email or other delivery channel is claimed here.
 
 ### Backup and recovery
 
@@ -174,8 +174,8 @@ docker compose down -v  # also remove local volumes
 | [Application flow](docs/architecture/application-flow.md) | Customer/admin journeys, service interactions, events, and current limitations |
 | [GitHub Actions pipelines](docs/architecture/github-actions-pipelines.md) | Environment targeting, image publication, and Terraform workflows |
 | [RDS permission matrix](docs/architecture/rds-permission-matrix.md) | Service schemas, users, and database permissions |
-| [RDS connectivity runbook](docs/runbooks/rds-database-connectivity.md) | Diagnosing secrets, connectivity, authentication, and grants |
-| [SQS monitoring runbook](docs/runbooks/sqs-monitoring.md) | Queue/DLQ alarms and verified alerting path |
+| [RDS connectivity runbook](docs/runbooks/12-rds-database-connectivity.md) | Diagnosing secrets, connectivity, authentication, and grants |
+| [SQS monitoring runbook](docs/runbooks/13-sqs-monitoring.md) | Queue/DLQ alarms and verified alerting path |
 | [DEV infrastructure health check](docs/tests/dev-infrastructure-health-check.md) | Recorded infrastructure and cluster verification |
 
 Service-level READMEs are available under [`services/`](services/). Kubernetes, Argo CD, Helm, and Terraform directories remain the source of truth for implementation details not covered by a dedicated guide.

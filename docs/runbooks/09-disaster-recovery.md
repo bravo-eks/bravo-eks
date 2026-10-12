@@ -1,4 +1,4 @@
-# Disaster recovery and data restoration
+# 09 — Disaster recovery and data restoration
 
 > **Safety:** Select the correct AWS account, cluster, namespace and environment before acting. Production changes require incident/change approval. Commands are diagnostic unless explicitly marked otherwise. Do not paste secret values into tickets or logs.
 
@@ -44,4 +44,4 @@ Check restored object counts, PVC binding, app readiness, RDS connection and rep
 
 ## Related
 
-[RDS connectivity](rds-database-connectivity.md), [SQS monitoring](sqs-monitoring.md), [Runbook index and incident priority](README.md).
+[RDS connectivity](12-rds-database-connectivity.md), [SQS monitoring](13-sqs-monitoring.md), [Runbook index and incident priority](README.md).

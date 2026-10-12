@@ -1,4 +1,4 @@
-# Pod troubleshooting
+# 03 — Pod troubleshooting
 
 > **Safety:** Select the correct AWS account, cluster, namespace and environment before acting. Production changes require incident/change approval. Commands are diagnostic unless explicitly marked otherwise. Do not paste secret values into tickets or logs.
 
@@ -55,4 +55,4 @@ Confirm stable restart count, Ready pods, working service endpoints, acceptable 
 
 ## Related
 
-[Scaling](05-scaling-capacity.md), [RDS connectivity](rds-database-connectivity.md), [Deployment rollback](02-deployment-rollback.md).
+[Scaling](05-scaling-capacity.md), [RDS connectivity](12-rds-database-connectivity.md), [Deployment rollback](02-deployment-rollback.md).

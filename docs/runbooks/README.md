@@ -37,10 +37,21 @@ If the cluster has been destroyed, AWS and Kubernetes checks will fail by design
 | [09-disaster-recovery.md](09-disaster-recovery.md) | Velero, RDS PITR, outage recovery |
 | [10-cost-operations.md](10-cost-operations.md) | EC2, NAT, LB, RDS, storage, logs |
 | [11-maintenance.md](11-maintenance.md) | Version upgrades and recurring checks |
+| [12-rds-database-connectivity.md](12-rds-database-connectivity.md) | Historical Dashboard API PostgreSQL grants incident and connectivity checks |
+| [13-sqs-monitoring.md](13-sqs-monitoring.md) | SQS backlog, DLQ, KEDA and monitoring evidence |
+| [14-cicd-gitops-troubleshooting.md](14-cicd-gitops-troubleshooting.md) | GitHub Actions, ECR, Argo CD, migrations |
+| [15-aws-identity-secrets.md](15-aws-identity-secrets.md) | IRSA, IAM, ESO, Secrets Manager, SES |
+| [16-cni-karpenter-network-recovery.md](16-cni-karpenter-network-recovery.md) | VPC CNI, pod IP allocation, Karpenter nodes |
+| [17-application-order-flow.md](17-application-order-flow.md) | Customer catalog, orders, payments, shipping, notifications |
+| [18-incident-history-and-triage.md](18-incident-history-and-triage.md) | Historical PR map and symptom-first routing |
 
-## Existing detailed runbooks
+## Historical coverage and limitations
 
-- [RDS connectivity](rds-database-connectivity.md) and [SQS monitoring](sqs-monitoring.md). The former Argo CD, backup/restore, and incident-response placeholder files are consolidated into the operational runbooks above.
+The two original specialist runbooks are now numbered **12** and **13**, preserving the RDS worked example and the SQS DEV monitoring evidence. Use [18 — Incident history](18-incident-history-and-triage.md) to route historical fixes to procedures. Historical PR titles are not proof of a production incident or tested remediation. This collection is a living reference and cannot guarantee every possible failure.
+
+## Standard runbook convention
+
+Files are named `NN-kebab-case-topic.md` (except this index); each begins `# NN — Descriptive title`. Procedures should explain **purpose, symptoms, diagnosis, resolution, verification, escalation/prevention** and include links to verified history when applicable. Always verify environment, account and Git desired state before applying a change.
 
 ## Evidence and closure template
 
