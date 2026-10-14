@@ -145,7 +145,7 @@ jobs:
         run: pip install checkov
 
       - name: Run Checkov
-        run: checkov -d terraform --framework terraform --soft-fail
+        run: checkov -d terraform --framework terraform
 
   terraform-checks:
     name: Terraform ${{ matrix.target.environment }} Plan
