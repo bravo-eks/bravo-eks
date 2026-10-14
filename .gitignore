@@ -24,7 +24,6 @@ services/worker/worker
 *.tfstate.*
 *.tfplan
 terraform/**/plan.txt
-.terraform.lock.hcl
 
 # Kubernetes
 kubeconfig
